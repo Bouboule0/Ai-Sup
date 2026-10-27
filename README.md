@@ -28,6 +28,14 @@ Using a frontier model for every single file read, test run, and syntax fix quic
 | **Failure Recovery** | Self-corrects inline, but at frontier token prices (\$10–\$25/1M out). | **Smart Escalation** — Executor retries locally; on repeated failure (`>= 2`), `StepRouter` escalates to the Planner with richer context. |
 
 ---
+### ⚠️ Current AI model supported 
+|Gemini | Claude |Note  |
+|-------|--------|------|
+| 4 Argon | Opus 5.5 | Frontier Model|
+| 3.8 Flash | Sonnet 5.5 | Delegated Model |
+| 3.1 Pro | Haiku 4.5 | Delegated Model |
+
+Examples of architectures are listed just below (along with benchmarks).
 
 ## 📈 Comparative Multi-Model Benchmark (10-Step Pipeline)
 
