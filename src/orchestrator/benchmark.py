@@ -87,7 +87,7 @@ SIMULATION_PROFILES: dict[str, ModelSimulationProfile] = {
         exec_latency_per_turn_s=3.4,
         complex_step_failures_before_replan=0,
     ),
-    "claude-haiku-4.5": ModelSimulationProfile(
+    "claude-haiku-5.5": ModelSimulationProfile(
         plan_input_tokens=28_000,
         plan_output_tokens=5_000,
         plan_latency_s=2.1,

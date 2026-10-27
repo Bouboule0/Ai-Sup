@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 
 def extract_json_block(text: str) -> dict[str, Any]:
-    """Extrait et parse un objet JSON depuis une réponse texte ou bloc Markdown.
+    """Extrait et parse le premier ou plus grand objet JSON valide depuis une réponse LLM.
 
     Args:
         text: Texte brut potentiellement entouré de balises markdown ```json ... ```.
@@ -27,24 +27,29 @@ def extract_json_block(text: str) -> dict[str, Any]:
         pass
 
     fence_pattern = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
-    match = fence_pattern.search(cleaned)
-    if match:
+    for match in fence_pattern.finditer(cleaned):
         try:
             data = json.loads(match.group(1))
             if isinstance(data, dict):
                 return data
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"Bloc JSON détecté mais invalide: {exc}") from exc
+        except json.JSONDecodeError:
+            continue
 
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        try:
-            data = json.loads(cleaned[start : end + 1])
-            if isinstance(data, dict):
-                return data
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"Impossible de parser le JSON extrait: {exc}") from exc
+    decoder = json.JSONDecoder()
+    best_obj: dict[str, Any] | None = None
+    best_len = -1
+    for idx, ch in enumerate(cleaned):
+        if ch == "{":
+            try:
+                obj, end_idx = decoder.raw_decode(cleaned, idx)
+                if isinstance(obj, dict) and (end_idx - idx) > best_len:
+                    best_obj = obj
+                    best_len = end_idx - idx
+            except json.JSONDecodeError:
+                continue
+
+    if best_obj is not None:
+        return best_obj
 
     raise ValueError("Aucun objet JSON valide trouvé dans la réponse.")
 

@@ -7,7 +7,7 @@
 A minimal, readable, and testable orchestrator based on the **Plan-then-Execute (P-t-E)** paradigm, supporting **multi-model and cross-provider AI pairings** (Google Gemini & Anthropic Claude):
 
 - **Frontier Planner (`BasePlanner`)**: Designs an atomic, Pydantic-validated execution plan (`Plan`) without writing final application code (`Gemini 4 Argon`, `Claude Opus 5.5`).
-- **Cost-Efficient Executor (`BaseExecutor`)**: Executes each atomic step (code generation, file edits, tool calls) using a short ReAct loop (`Gemini 3.8 Flash`, `Gemini 3.1 Pro`, `Claude Sonnet 5.5`, `Claude Haiku 4.5`).
+- **Cost-Efficient Executor (`BaseExecutor`)**: Executes each atomic step (code generation, file edits, tool calls) using a short ReAct loop (`Gemini 3.8 Flash`, `Gemini 3.1 Pro`, `Claude Sonnet 5.5`, `Claude Haiku 5.5`).
 - **StepRouter & CostTracker**: Dynamic routing with conditional escalation back to the Planner upon repeated failures, and strict real-time budget enforcement.
 
 Repository: https://github.com/Bouboule0/Ai-Sup
@@ -41,7 +41,7 @@ Using a frontier model for every single file read, test run, and syntax fix quic
 |-------|--------|------|
 | 4 Argon | Opus 5.5 | Frontier Model|
 | 3.8 Flash | Sonnet 5.5 | Delegated Model |
-| 3.1 Pro | Haiku 4.5 | Delegated Model |
+| 3.1 Pro | Haiku 5.5 | Delegated Model |
 
 Examples of architectures are listed just below (along with benchmarks).
 
@@ -58,7 +58,7 @@ The benchmark runs a 10-step software engineering pipeline (file inspection, Pyd
 | `argon-pro` | Delegated P-t-E | `gemini-4-argon` | `gemini-3.1-pro` | 10/10 (100%) | 20 | 0 | \$0.1290 | \$1.6000 | **\$1.7290** | **-45.1%** | 90.5s |
 | `opus-only` | 100% Frontier | `claude-opus-5.5` | `claude-opus-5.5` | 10/10 (100%) | 20 | 0 | \$0.3450 | \$8.0000 | **\$8.3450** | Baseline (0.0%) | 177.8s |
 | `opus-sonnet` | Delegated P-t-E | `claude-opus-5.5` | `claude-sonnet-5.5` | 10/10 (100%) | 20 | 0 | \$0.3450 | \$2.1600 | **\$2.5050** | **-70.0%** | 77.8s |
-| `opus-haiku` | Delegated P-t-E | `claude-opus-5.5` | `claude-haiku-4.5` | 10/10 (100%) | 36 | 1 | \$0.6900 | \$0.9576 | **\$1.6476** | **-80.3%** | 73.6s |
+| `opus-haiku` | Delegated P-t-E | `claude-opus-5.5` | `claude-haiku-5.5` | 10/10 (100%) | 36 | 1 | \$0.6900 | \$0.2394 | **\$0.9294** | **-88.9%** | 73.6s |
 | `opus-flash` | Delegated P-t-E | `claude-opus-5.5` | `gemini-3.8-flash` | 10/10 (100%) | 24 | 1 | \$0.6900 | \$1.2420 | **\$1.9320** | **-76.8%** | 65.2s |
 | `argon-sonnet` | Delegated P-t-E | `gemini-4-argon` | `claude-sonnet-5.5` | 10/10 (100%) | 20 | 0 | \$0.1290 | \$2.1600 | **\$2.2890** | **-27.3%** | 76.5s |
 

@@ -17,7 +17,7 @@ ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 
 
 class AnthropicExecutor(BaseExecutor):
-    """Exécuteur concret utilisant un modèle Anthropic Claude (ex: Sonnet 5.5, Haiku 4.5, Opus 5.5)."""
+    """Exécuteur concret utilisant un modèle Anthropic Claude (ex: Sonnet 5.5, Claude Haiku 5.5, Opus 5.5)."""
 
     def __init__(
         self,
@@ -52,10 +52,9 @@ class AnthropicExecutor(BaseExecutor):
 
         observations: list[dict[str, Any]] = []
         last_result: ExecutionResult | None = None
-        schema_json = json.dumps(ExecutionResult.model_json_schema(), ensure_ascii=False, indent=2)
         system_prompt = (
             f"{EXECUTOR_SYSTEM_PROMPT}\n\n"
-            f"Réponds UNIQUEMENT avec un objet JSON valide conforme à ce schéma :\n{schema_json}"
+            "Tu DOIS impérativement appeler l'outil `submit_execution_result` pour retourner ta décision structurée."
         )
 
         for _ in range(self._max_react_turns):
@@ -68,7 +67,10 @@ class AnthropicExecutor(BaseExecutor):
                     error="BudgetExceeded",
                 )
 
-            prompt = FlashExecutor._build_prompt(step, state, tools_spec, observations)
+            prompt = (
+                FlashExecutor._build_prompt(step, state, tools_spec, observations)
+                + "\n\nAppelle maintenant l'outil `submit_execution_result`."
+            )
 
             headers = {
                 "x-api-key": self._api_key,
@@ -77,15 +79,24 @@ class AnthropicExecutor(BaseExecutor):
             }
             body = {
                 "model": self._model_id,
-                "max_tokens": 4096,
-                "temperature": 0.1,
+                "max_tokens": 16384,
                 "system": system_prompt,
+                "tools": [
+                    {
+                        "name": "submit_execution_result",
+                        "description": "Retourne le résultat structuré ExecutionResult de ce tour ReAct.",
+                        "input_schema": ExecutionResult.model_json_schema(),
+                    }
+                ],
                 "messages": [{"role": "user", "content": prompt}],
             }
 
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 resp = await client.post(ANTHROPIC_API_URL, headers=headers, json=body)
-                resp.raise_for_status()
+                if resp.is_error:
+                    raise RuntimeError(
+                        f"Erreur API Anthropic ({resp.status_code}) sur {self._model_id} : {resp.text}"
+                    )
                 data = resp.json()
 
             usage = data.get("usage", {})
@@ -96,25 +107,44 @@ class AnthropicExecutor(BaseExecutor):
             )
 
             content_blocks = data.get("content", [])
-            raw_text = "\n".join(
-                block.get("text", "") for block in content_blocks if block.get("type") == "text"
-            )
-            try:
-                payload = extract_json_block(raw_text)
-                result = ExecutionResult.model_validate(payload)
-            except (ValueError, ValidationError) as exc:
-                err_msg = (
-                    format_validation_error(exc)
-                    if isinstance(exc, ValidationError)
-                    else str(exc)
+            result: ExecutionResult | None = None
+            for block in content_blocks:
+                if (
+                    block.get("type") == "tool_use"
+                    and block.get("name") == "submit_execution_result"
+                ):
+                    try:
+                        result = ExecutionResult.model_validate(block.get("input", {}))
+                    except ValidationError as exc:
+                        return ExecutionResult(
+                            step_id=step.id,
+                            status=StepStatus.FAILED,
+                            output="",
+                            justification="Erreur de validation sur submit_execution_result.",
+                            error=format_validation_error(exc),
+                        )
+                    break
+
+            if result is None:
+                raw_text = "\n".join(
+                    block.get("text", "") for block in content_blocks if block.get("type") == "text"
                 )
-                return ExecutionResult(
-                    step_id=step.id,
-                    status=StepStatus.FAILED,
-                    output="",
-                    justification="La réponse du modèle Anthropic n'a pas pu être validée.",
-                    error=err_msg,
-                )
+                try:
+                    payload = extract_json_block(raw_text)
+                    result = ExecutionResult.model_validate(payload)
+                except (ValueError, ValidationError) as exc:
+                    err_msg = (
+                        format_validation_error(exc)
+                        if isinstance(exc, ValidationError)
+                        else str(exc)
+                    )
+                    return ExecutionResult(
+                        step_id=step.id,
+                        status=StepStatus.FAILED,
+                        output="",
+                        justification="La réponse du modèle Anthropic n'a pas pu être validée.",
+                        error=err_msg,
+                    )
 
             last_result = result
 

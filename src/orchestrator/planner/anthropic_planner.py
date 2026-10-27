@@ -34,21 +34,20 @@ class AnthropicPlanner(BasePlanner):
         self._model_id = cost_tracker.get_model_id(model_key)
 
     async def plan(self, goal: str, context: dict[str, Any]) -> Plan:
-        """Génère un plan d'exécution validé via l'API Anthropic Messages."""
+        """Génère un plan d'exécution validé via l'API Anthropic Messages (avec outil structuré)."""
         if self._cost_tracker.is_over_budget():
             raise RuntimeError("Budget dépassé avant l'appel au planificateur Anthropic.")
 
-        schema_json = json.dumps(Plan.model_json_schema(), ensure_ascii=False, indent=2)
         system_prompt = (
             f"{PLANNER_SYSTEM_PROMPT}\n\n"
-            f"Réponds UNIQUEMENT avec un objet JSON valide conforme à ce schéma JSON :\n{schema_json}"
+            "Tu DOIS impérativement appeler l'outil `submit_plan` pour retourner le plan structuré."
         )
         user_prompt = (
             f"Objectif principal :\n{goal}\n\n"
-            f"Contexte actuel du projet (JSON) :\n{json.dumps(context, ensure_ascii=False, indent=2)}"
+            f"Contexte actuel du projet (JSON) :\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\n"
+            "Appelle maintenant l'outil `submit_plan` avec le plan complet."
         )
 
-        # À VÉRIFIER: version d'en-tête anthropic-version et identifiant exact du modèle Claude 5.5
         headers = {
             "x-api-key": self._api_key,
             "anthropic-version": "2023-06-01",
@@ -56,15 +55,24 @@ class AnthropicPlanner(BasePlanner):
         }
         body = {
             "model": self._model_id,
-            "max_tokens": 4096,
-            "temperature": 0.2,
+            "max_tokens": 16384,
             "system": system_prompt,
+            "tools": [
+                {
+                    "name": "submit_plan",
+                    "description": "Soumet le plan d'exécution structuré conforme au schéma Plan.",
+                    "input_schema": Plan.model_json_schema(),
+                }
+            ],
             "messages": [{"role": "user", "content": user_prompt}],
         }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(ANTHROPIC_API_URL, headers=headers, json=body)
-            resp.raise_for_status()
+            if resp.is_error:
+                raise RuntimeError(
+                    f"Erreur API Anthropic ({resp.status_code}) sur {self._model_id} : {resp.text}"
+                )
             data = resp.json()
 
         usage = data.get("usage", {})
@@ -75,6 +83,13 @@ class AnthropicPlanner(BasePlanner):
         )
 
         content_blocks = data.get("content", [])
+        for block in content_blocks:
+            if block.get("type") == "tool_use" and block.get("name") == "submit_plan":
+                try:
+                    return Plan.model_validate(block.get("input", {}))
+                except ValidationError as exc:
+                    raise ValueError(format_validation_error(exc)) from exc
+
         raw_text = "\n".join(
             block.get("text", "") for block in content_blocks if block.get("type") == "text"
         )

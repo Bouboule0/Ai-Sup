@@ -163,7 +163,14 @@ async def _async_run(
 
         step = current_plan.steps[step_index]
         completed: list[str] = context.get("completed_steps", [])
-        unmet_deps = [dep for dep in step.depends_on if dep not in completed]
+        if step.id in completed:
+            step_index += 1
+            continue
+
+        plan_step_ids = {s.id for s in current_plan.steps}
+        unmet_deps = [
+            dep for dep in step.depends_on if dep in plan_step_ids and dep not in completed
+        ]
         if unmet_deps:
             console.print(
                 f"[bold red]Dépendances non satisfaites pour {step.id} : {unmet_deps}[/bold red]"
@@ -255,19 +262,25 @@ async def _async_run(
     )
 
 
-async def _async_demo_ui(duration_per_phase: float) -> None:
+async def _async_demo_ui(duration_per_phase: float, pairing: str) -> None:
     """Joue une démonstration complète des 4 états de la scène animée dans le terminal."""
+    config_dir = _resolve_config_dir()
+    tracker = CostTracker(max_budget=10.0, models_config_path=config_dir / "models.yaml")
+    pairing_cfg = tracker.get_pairing(pairing)
+    planner_label = pairing_cfg.planner
+    executor_label = pairing_cfg.executor
+
     scene = TerminalScene(console=console, enabled=True, fps=4.0)
     async with scene.session():
         scene.update(
             mode=SceneMode.PLANNING,
-            planner_name="gemini-4-argon",
-            executor_name="gemini-3.8-flash",
+            planner_name=planner_label,
+            executor_name=executor_label,
             completed_steps=0,
             total_steps=10,
             current_cost_usd=0.0420,
             max_budget_usd=1.5000,
-            status_message="Argon (Planner) découpe l'objectif en étapes atomiques...",
+            status_message=f"{planner_label} (Planner) découpe l'objectif en étapes atomiques...",
         )
         await asyncio.sleep(duration_per_phase)
 
@@ -278,7 +291,7 @@ async def _async_demo_ui(duration_per_phase: float) -> None:
             completed_steps=3,
             total_steps=10,
             current_cost_usd=0.1840,
-            status_message="Flash (Executor) exécute step_3 en boucle ReAct...",
+            status_message=f"{executor_label} (Executor) exécute step_3 en boucle ReAct...",
         )
         await asyncio.sleep(duration_per_phase)
 
@@ -288,7 +301,7 @@ async def _async_demo_ui(duration_per_phase: float) -> None:
             completed_steps=4,
             total_steps=10,
             current_cost_usd=0.3120,
-            status_message="StepRouter : 2 échecs sur step_4 -> Escalade vers Argon !",
+            status_message=f"StepRouter : 2 échecs sur step_4 -> Escalade vers {planner_label} !",
         )
         await asyncio.sleep(duration_per_phase)
 
@@ -297,7 +310,7 @@ async def _async_demo_ui(duration_per_phase: float) -> None:
             completed_steps=10,
             total_steps=10,
             current_cost_usd=0.4950,
-            status_message="Objectif terminé avec succès ! (-58% sur le budget vs 100% Argon)",
+            status_message=f"Objectif terminé avec succès avec le couple '{pairing}' !",
         )
         await asyncio.sleep(duration_per_phase)
 
@@ -372,12 +385,17 @@ def plan(
 
 @app.command(name="demo-ui")
 def demo_ui(
+    pairing: str = typer.Option(
+        "argon-flash",
+        "--pairing",
+        help="Couple à mettre en scène dans la démo (ex: opus-haiku, argon-flash, opus-sonnet).",
+    ),
     duration: float = typer.Option(
         2.5, "--duration", help="Durée en secondes de chaque phase de la démonstration."
     ),
 ) -> None:
     """Lance une démonstration visuelle de la scène animée (Parent Planner + Petit Exécuteur)."""
-    asyncio.run(_async_demo_ui(duration_per_phase=duration))
+    asyncio.run(_async_demo_ui(duration_per_phase=duration, pairing=pairing))
 
 
 @app.command()

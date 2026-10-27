@@ -65,11 +65,11 @@ models:
       structured_output: true
       function_calling: true
 
-  claude-haiku-4.5:
-    id: "claude-haiku-4-5" # À VÉRIFIER: exact model ID in Anthropic Messages API
+  claude-haiku-5.5:
+    id: "claude-haiku-5-5" # À VÉRIFIER: exact model ID in Anthropic Messages API
     provider: "anthropic"
-    input_cost_per_million: 0.40
-    output_cost_per_million: 2.00
+    input_cost_per_million: 0.10
+    output_cost_per_million: 0.50
     capabilities:
       structured_output: true
       function_calling: true
@@ -106,9 +106,9 @@ pairings:
     baseline: "opus-only"
 
   opus-haiku:
-    description: "Ultra-Budget Anthropic P-t-E (Claude Opus 5.5 -> Claude Haiku 4.5)"
+    description: "Ultra-Budget Anthropic P-t-E (Claude Opus 5.5 -> Claude Haiku 5.5)"
     planner: "claude-opus-5.5"
-    executor: "claude-haiku-4.5"
+    executor: "claude-haiku-5.5"
     baseline: "opus-only"
 
   opus-flash:
