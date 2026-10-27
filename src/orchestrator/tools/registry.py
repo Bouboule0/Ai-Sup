@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 from pydantic import BaseModel
 
@@ -24,9 +25,10 @@ class Tool:
 class ToolRegistry:
     """Registre central des outils disponibles."""
 
-    def __init__(self) -> None:
+    def __init__(self, project_root: Path | None = None) -> None:
         """Initialise un registre vide."""
         self._tools: dict[str, Tool] = {}
+        self.project_root: Path | None = project_root
 
     def register(self, tool: Tool) -> None:
         """Enregistre un outil dans le registre."""

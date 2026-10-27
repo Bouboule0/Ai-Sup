@@ -10,6 +10,7 @@ from orchestrator.executor.base import BaseExecutor
 from orchestrator.executor.flash_executor import EXECUTOR_SYSTEM_PROMPT, FlashExecutor
 from orchestrator.runtime.cost_tracker import CostTracker
 from orchestrator.schemas import ExecutionResult, Step, StepStatus
+from orchestrator.tools.file_system import verify_expected_outputs
 from orchestrator.tools.registry import ToolRegistry
 from orchestrator.utils.parsing import extract_json_block, format_validation_error
 
@@ -148,10 +149,34 @@ class AnthropicExecutor(BaseExecutor):
 
             last_result = result
 
-            if not result.tool_calls or result.status in (StepStatus.SUCCESS, StepStatus.FAILED):
-                if result.status == StepStatus.IN_PROGRESS and not result.tool_calls:
-                    result.status = StepStatus.SUCCESS
+            if result.status == StepStatus.FAILED:
                 return result
+
+            if not result.tool_calls:
+                if result.status == StepStatus.SUCCESS:
+                    if step.expected_outputs and self._tool_registry.project_root is not None:
+                        missing = verify_expected_outputs(
+                            self._tool_registry.project_root, step.expected_outputs
+                        )
+                        if missing:
+                            return ExecutionResult(
+                                step_id=step.id,
+                                status=StepStatus.FAILED,
+                                output=result.output,
+                                justification=f"Artefact(s) attendu(s) manquant(s) : {missing}",
+                                error="MissingExpectedOutputError",
+                            )
+                    return result
+                return ExecutionResult(
+                    step_id=step.id,
+                    status=StepStatus.FAILED,
+                    output=result.output,
+                    justification=(
+                        f"Protocole ReAct invalide : statut '{result.status.value}' "
+                        "reçu sans aucun appel d'outil (tool_calls vide)."
+                    ),
+                    error="IncompleteTurnProtocolError",
+                )
 
             for call in result.tool_calls:
                 if call.tool_name not in tools_map:

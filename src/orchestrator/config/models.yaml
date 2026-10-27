@@ -1,0 +1,124 @@
+models:
+  # Default role aliases (backward compatibility)
+  planner:
+    id: "gemini-4-argon" # À VÉRIFIER: exact model ID in Google GenAI API
+    provider: "google"
+    input_cost_per_million: 2.00
+    output_cost_per_million: 10.00
+    capabilities:
+      structured_output: true
+      function_calling: true
+
+  executor:
+    id: "gemini-3.8-flash" # À VÉRIFIER: exact model ID in Google GenAI API
+    provider: "google"
+    input_cost_per_million: 0.75
+    output_cost_per_million: 3.75
+    capabilities:
+      structured_output: true
+      function_calling: true
+
+  # Named Google Gemini models
+  gemini-4-argon:
+    id: "gemini-4-argon"
+    provider: "google"
+    input_cost_per_million: 2.00
+    output_cost_per_million: 10.00
+    capabilities:
+      structured_output: true
+      function_calling: true
+
+  gemini-3.1-pro:
+    id: "gemini-3.1-pro"
+    provider: "google"
+    input_cost_per_million: 1.25
+    output_cost_per_million: 5.00
+    capabilities:
+      structured_output: true
+      function_calling: true
+
+  gemini-3.8-flash:
+    id: "gemini-3.8-flash"
+    provider: "google"
+    input_cost_per_million: 0.75
+    output_cost_per_million: 3.75
+    capabilities:
+      structured_output: true
+      function_calling: true
+
+  # Named Anthropic Claude models
+  claude-opus-5.5:
+    id: "claude-opus-5-5" # À VÉRIFIER: exact model ID in Anthropic Messages API
+    provider: "anthropic"
+    input_cost_per_million: 5.00
+    output_cost_per_million: 25.00
+    capabilities:
+      structured_output: true
+      function_calling: true
+
+  claude-sonnet-5.5:
+    id: "claude-sonnet-5-5" # À VÉRIFIER: exact model ID in Anthropic Messages API
+    provider: "anthropic"
+    input_cost_per_million: 1.50
+    output_cost_per_million: 7.50
+    capabilities:
+      structured_output: true
+      function_calling: true
+
+  claude-haiku-5.5:
+    id: "claude-haiku-5-5" # À VÉRIFIER: exact model ID in Anthropic Messages API
+    provider: "anthropic"
+    input_cost_per_million: 0.10
+    output_cost_per_million: 0.50
+    capabilities:
+      structured_output: true
+      function_calling: true
+
+pairings:
+  argon-only:
+    description: "100% Frontier Baseline (Gemini 4 Argon -> Gemini 4 Argon)"
+    planner: "gemini-4-argon"
+    executor: "gemini-4-argon"
+    baseline: "argon-only"
+
+  argon-flash:
+    description: "Default Gemini P-t-E (Gemini 4 Argon -> Gemini 3.8 Flash)"
+    planner: "gemini-4-argon"
+    executor: "gemini-3.8-flash"
+    baseline: "argon-only"
+
+  argon-pro:
+    description: "Balanced Gemini P-t-E (Gemini 4 Argon -> Gemini 3.1 Pro)"
+    planner: "gemini-4-argon"
+    executor: "gemini-3.1-pro"
+    baseline: "argon-only"
+
+  opus-only:
+    description: "100% Claude Frontier Baseline (Claude Opus 5.5 -> Claude Opus 5.5)"
+    planner: "claude-opus-5.5"
+    executor: "claude-opus-5.5"
+    baseline: "opus-only"
+
+  opus-sonnet:
+    description: "Anthropic P-t-E (Claude Opus 5.5 -> Claude Sonnet 5.5)"
+    planner: "claude-opus-5.5"
+    executor: "claude-sonnet-5.5"
+    baseline: "opus-only"
+
+  opus-haiku:
+    description: "Ultra-Budget Anthropic P-t-E (Claude Opus 5.5 -> Claude Haiku 5.5)"
+    planner: "claude-opus-5.5"
+    executor: "claude-haiku-5.5"
+    baseline: "opus-only"
+
+  opus-flash:
+    description: "Cross-Provider Hybrid (Claude Opus 5.5 -> Gemini 3.8 Flash)"
+    planner: "claude-opus-5.5"
+    executor: "gemini-3.8-flash"
+    baseline: "opus-only"
+
+  argon-sonnet:
+    description: "Cross-Provider Hybrid (Gemini 4 Argon -> Claude Sonnet 5.5)"
+    planner: "gemini-4-argon"
+    executor: "claude-sonnet-5.5"
+    baseline: "argon-only"

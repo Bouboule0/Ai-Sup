@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from importlib import resources
 from pathlib import Path
 import typer
 from dotenv import load_dotenv
@@ -20,7 +21,7 @@ from orchestrator.router.step_router import StepRouter
 from orchestrator.runtime.context import ExecutionContext
 from orchestrator.runtime.cost_tracker import CostTracker
 from orchestrator.schemas import Plan, StepStatus
-from orchestrator.tools.file_system import register_filesystem_tools
+from orchestrator.tools.file_system import register_filesystem_tools, verify_expected_outputs
 from orchestrator.tools.registry import ToolRegistry
 from orchestrator.tools.shell import register_shell_tools
 from orchestrator.ui.terminal_scene import SceneMode, TerminalScene, ensure_utf8_console
@@ -35,13 +36,20 @@ console = Console(legacy_windows=False)
 
 
 def _resolve_config_dir() -> Path:
-    """Localise le dossier config/ du dépôt."""
+    """Localise le dossier config/ du dépôt ou les ressources packagées de la wheel."""
     candidates = [
         Path.cwd() / "config",
         Path(__file__).resolve().parents[2] / "config",
+        Path(__file__).resolve().parent / "config",
     ]
+    try:
+        pkg_cfg = Path(str(resources.files("orchestrator").joinpath("config")))
+        candidates.append(pkg_cfg)
+    except Exception:
+        pass
+
     for candidate in candidates:
-        if (candidate / "models.yaml").exists():
+        if (candidate / "models.yaml").exists() and (candidate / "router.yaml").exists():
             return candidate
     raise FileNotFoundError("Impossible de localiser le dossier 'config/' (models.yaml).")
 
@@ -83,6 +91,11 @@ async def _async_plan(goal: str, max_budget: float, planner_model: str, no_anim:
     )
     async with scene.session():
         plan_obj = await planner.plan(goal=goal, context={})
+        try:
+            plan_obj.validate_dependencies()
+        except ValueError as exc:
+            console.print(f"[bold red]Plan invalide : {exc}[/bold red]")
+            raise typer.Exit(code=1) from exc
         scene.update(
             mode=SceneMode.SUCCESS,
             completed_steps=len(plan_obj.steps),
@@ -147,6 +160,11 @@ async def _async_run(
 
     async with scene.session():
         current_plan = await planner.plan(goal=goal, context=context.snapshot())
+        try:
+            current_plan.validate_dependencies(context.get("completed_steps", []))
+        except ValueError as exc:
+            console.print(f"[bold red]Plan initial invalide : {exc}[/bold red]")
+            raise typer.Exit(code=1) from exc
         scene.update(
             total_steps=len(current_plan.steps),
             current_cost_usd=tracker.total_cost(),
@@ -167,10 +185,7 @@ async def _async_run(
             step_index += 1
             continue
 
-        plan_step_ids = {s.id for s in current_plan.steps}
-        unmet_deps = [
-            dep for dep in step.depends_on if dep in plan_step_ids and dep not in completed
-        ]
+        unmet_deps = [dep for dep in step.depends_on if dep not in completed]
         if unmet_deps:
             console.print(
                 f"[bold red]Dépendances non satisfaites pour {step.id} : {unmet_deps}[/bold red]"
@@ -197,6 +212,11 @@ async def _async_run(
                     status_message=f"StepRouter : Escalade vers {planner_key} sur {step.id}...",
                 )
                 current_plan = await planner.plan(goal=goal, context=context.snapshot())
+                try:
+                    current_plan.validate_dependencies(context.get("completed_steps", []))
+                except ValueError as exc:
+                    console.print(f"[bold red]Plan replanifié invalide : {exc}[/bold red]")
+                    raise typer.Exit(code=1) from exc
                 context.set("step_retries", {})
                 step_index = 0
                 continue
@@ -212,6 +232,20 @@ async def _async_run(
                 status_message=f"{executor_key} exécute {step.id} : {step.description}",
             )
             result = await executor.execute(step, context.snapshot())
+
+            if result.status == StepStatus.SUCCESS and step.expected_outputs:
+                missing_files = verify_expected_outputs(context.project_root, step.expected_outputs)
+                if missing_files:
+                    result = result.model_copy(
+                        update={
+                            "status": StepStatus.FAILED,
+                            "justification": (
+                                f"{result.justification} [Rejeté : fichiers attendus manquants : "
+                                f"{', '.join(missing_files)}]"
+                            ),
+                            "error": "MissingExpectedOutputError",
+                        }
+                    )
 
             if result.status == StepStatus.SUCCESS:
                 completed.append(step.id)

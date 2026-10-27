@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class StepType(str, Enum):
@@ -55,6 +56,60 @@ class Plan(BaseModel):
     goal: str = Field(..., description="Objectif initial de l'utilisateur.")
     summary: str = Field(..., description="Résumé de la stratégie adoptée.")
     steps: list[Step] = Field(..., min_length=1, description="Liste ordonnée des étapes.")
+
+    @model_validator(mode="after")
+    def _validate_structure_and_cycles(self) -> Plan:
+        """Valide l'unicité des identifiants d'étapes, l'absence d'auto-dépendance et de cycles."""
+        seen_ids: set[str] = set()
+        steps_by_id: dict[str, Step] = {}
+        for step in self.steps:
+            if step.id in seen_ids:
+                raise ValueError(f"Identifiant d'étape dupliqué dans le plan : '{step.id}'")
+            if step.id in step.depends_on:
+                raise ValueError(f"L'étape '{step.id}' ne peut pas dépendre d'elle-même.")
+            seen_ids.add(step.id)
+            steps_by_id[step.id] = step
+
+        # Détection de cycle (DFS 3 couleurs : 0=non visité, 1=en cours, 2=terminé)
+        state: dict[str, int] = {sid: 0 for sid in seen_ids}
+
+        def _visit(node_id: str) -> None:
+            state[node_id] = 1
+            for dep_id in steps_by_id[node_id].depends_on:
+                if dep_id not in state:
+                    continue
+                if state[dep_id] == 1:
+                    raise ValueError(
+                        f"Cycle de dépendances détecté impliquant '{node_id}' et '{dep_id}'."
+                    )
+                if state[dep_id] == 0:
+                    _visit(dep_id)
+            state[node_id] = 2
+
+        for sid in seen_ids:
+            if state[sid] == 0:
+                _visit(sid)
+
+        return self
+
+    def validate_dependencies(self, completed_steps: Iterable[str] = ()) -> None:
+        """Vérifie que chaque prérequis existe (dans le plan ou l'état complété) et respecte l'ordre d'exécution."""
+        completed_set = set(completed_steps)
+        index_by_id = {step.id: idx for idx, step in enumerate(self.steps)}
+
+        for idx, step in enumerate(self.steps):
+            for dep in step.depends_on:
+                if dep in completed_set:
+                    continue
+                if dep not in index_by_id:
+                    raise ValueError(
+                        f"Dépendance introuvable '{dep}' requise par l'étape '{step.id}'."
+                    )
+                if index_by_id[dep] >= idx:
+                    raise ValueError(
+                        f"Ordre de dépendance invalide : '{step.id}' dépend de '{dep}' "
+                        "qui est planifiée après elle."
+                    )
 
 
 class ToolCallRequest(BaseModel):

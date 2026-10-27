@@ -29,6 +29,10 @@ orch = "orchestrator.cli:app"
 [tool.hatch.build.targets.wheel]
 packages = ["src/orchestrator"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"config/models.yaml" = "orchestrator/config/models.yaml"
+"config/router.yaml" = "orchestrator/config/router.yaml"
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]

@@ -53,8 +53,22 @@ def validate_project_path(project_root: Path, relative_path: str) -> Path:
     return target_resolved
 
 
+def verify_expected_outputs(project_root: Path, expected_outputs: list[str]) -> list[str]:
+    """Retourne la liste des fichiers attendus (expected_outputs) qui n'existent pas sur le disque."""
+    missing: list[str] = []
+    for rel_path in expected_outputs:
+        try:
+            target = validate_project_path(project_root, rel_path)
+            if not target.exists():
+                missing.append(rel_path)
+        except PermissionError:
+            missing.append(rel_path)
+    return missing
+
+
 def register_filesystem_tools(registry: ToolRegistry, project_root: Path) -> None:
     """Enregistre les outils read_file, write_file et list_dir liés à project_root."""
+    registry.project_root = project_root.resolve()
 
     def _read_file(path: str) -> str:
         target = validate_project_path(project_root, path)

@@ -222,7 +222,8 @@ All configuration lives in `config/`:
 
 ### 6.2 Security & Sandboxing
 - **Filesystem Confinement (`tools/file_system.py`)**: `read_file`, `write_file`, and `list_dir` strictly reject paths containing `..`, absolute paths, or symlinks escaping the `--project` root directory.
-- **Shell Command Whitelist (`tools/shell.py`)**: `run_command` rejects any command that does not match a prefix in `config/router.yaml` (`pytest`, `python`, `git status`, `git diff`, `ruff`, `ls`). Shell chaining and redirection operators (`;`, `&&`, `||`, `|`, `` ` ``, `$(`, `>`, `<`) are blocked to prevent command injection.
+- **Shell Command Policy (`tools/shell.py`)**: `run_command` rejects any command that does not match a prefix in `config/router.yaml` (`pytest`, `python`, `git status`, `git diff`, `ruff`, `ls`). Shell chaining/redirection operators (`;`, `&&`, `||`, `|`, `` ` ``, `$(`, `>`, `<`), inline execution flags (`-c`, `--command`, `-e`, `--eval`), and arguments traversing outside `--project` (`..`, `~`, external absolute paths) are blocked.
+- **OS Subprocess Boundary**: `run_command` executes allowed binaries as local OS subprocesses (`cwd=project_root`, `shell=False`) and is **not** a kernel/container sandbox—a script inside `--project` executed via `python` or `pytest` runs with your current user's OS permissions. For untrusted workloads requiring strict OS-level filesystem or network isolation, run `orch` inside a Docker container or VM.
 
 ### 6.3 Budget Enforcement (`CostTracker`)
 - Remaining budget is checked **before every Planner call** and **before every Executor ReAct turn**.
