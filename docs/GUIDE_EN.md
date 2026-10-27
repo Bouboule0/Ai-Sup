@@ -3,7 +3,7 @@
 > **French version available here:** [docs/GUIDE_FR.md](./GUIDE_FR.md)
 
 <p align="center">
-  <img src="./assets/terminal_demo.svg" alt="Ai-Sup Animated Terminal Demo" width="100%" />
+  <img src="./assets/terminal_demo.svg?v=2" alt="Ai-Sup Animated Terminal Demo" width="100%" />
 </p>
 
 Welcome to the comprehensive documentation for **Ai-Sup**. This guide explains how to install, use, customize, and benchmark the multi-model **Plan-then-Execute (P-t-E)** orchestrator.

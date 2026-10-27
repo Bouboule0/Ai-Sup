@@ -3,7 +3,7 @@
 > **Version anglaise disponible ici :** [docs/GUIDE_EN.md](./GUIDE_EN.md)
 
 <p align="center">
-  <img src="./assets/terminal_demo.svg" alt="Animation Terminal Ai-Sup" width="100%" />
+  <img src="./assets/terminal_demo.svg?v=2" alt="Animation Terminal Ai-Sup" width="100%" />
 </p>
 
 Bienvenue dans la documentation complète d'**Ai-Sup**. Ce guide détaille comment installer, utiliser, personnaliser et benchmarker l'orchestrateur **Plan-then-Execute (P-t-E)** multi-modèles.

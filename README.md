@@ -1,7 +1,7 @@
 # 🤖 Ai-Sup
 
 <p align="center">
-  <img src="docs/assets/terminal_demo.svg" alt="Ai-Sup Animated Terminal Demo (Parent Planner + Child Executor)" width="100%" />
+  <img src="docs/assets/terminal_demo.svg?v=2" alt="Ai-Sup Animated Terminal Demo (Parent Planner + Child Executor)" width="100%" />
 </p>
 
 A minimal, readable, and testable orchestrator based on the **Plan-then-Execute (P-t-E)** paradigm, supporting **multi-model and cross-provider AI pairings** (Google Gemini & Anthropic Claude):
