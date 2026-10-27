@@ -51,7 +51,7 @@ class SceneState:
 
 
 class TerminalScene:
-    """Scène animée style Claude Code avec duo Parent (Planner) + Enfant (Executor)."""
+    """Scène animée fidèle au style Claude Code (lune C tramée, nuages ░▒, mascotte à 4 pattes et oreilles)."""
 
     def __init__(self, console: Console, enabled: bool = True, fps: float = 4.0) -> None:
         """Initialise la scène animée.
@@ -110,43 +110,43 @@ class TerminalScene:
             self._live.update(self.render_frame())
 
     def render_frame(self) -> Text:
-        """Construit une frame Rich Text complète de la scène nocturne et des deux mascottes."""
+        """Construit une frame Rich Text reproduisant la mascotte et le décor Claude Code."""
         t = self.state.tick
         s = self.state
 
         star1 = "*" if t % 2 == 0 else "·"
         star2 = "*" if (t + 1) % 3 == 0 else " "
-        star3 = "+" if t % 4 == 0 else "*"
+        star3 = "*" if t % 4 != 0 else "·"
 
-        # Configuration visuelle selon l'état
         bubble_left = "                  "
+        bubble_left_color = "bright_blue"
         bubble_right = ""
+        bubble_right_color = "yellow"
         child_offset = 6
-        child_color = "#df8257"  # Terracotta / orange style Claude Code
-        child_eye_char = "▪"
-        child_legs = "█▀ ▀█" if t % 2 == 0 else "▀█ █▀"
+        child_color = "#d97757"  # Terracotta exact de Claude Code
+        child_eye = "▪"
+        # Les 4 petites pattes caractéristiques du bonhomme Claude Code
+        child_legs = "█ █  █ █" if t % 2 == 0 else "▀ █  ▀ █"
         status_dot_color = "#fbbf24"
 
         if s.mode == SceneMode.PLANNING:
             dots = ("." * ((t % 3) + 1)).ljust(3)
-            bubble_left = f"  [Plan{dots}]       "
-            bubble_left_color = "bright_blue"
+            bubble_left = f"   [Plan{dots}]      "
             child_offset = 4
-            child_legs = "█   █"
+            child_legs = "█ █  █ █"
             status_dot_color = "bright_blue"
         elif s.mode == SceneMode.EXECUTING:
-            bubble_left_color = "bright_blue"
             child_offset = 5 + (t % 14)
             tool_label = s.current_tool or f"run({s.current_step_id})"
             bubble_right = f"⚡ {tool_label}"
-            bubble_right_color = "yellow"
             status_dot_color = "yellow"
         elif s.mode == SceneMode.ESCALATION:
-            bubble_left = "  [Replan!]       "
+            bubble_left = "   [Replan!]      "
             bubble_left_color = "magenta"
             child_offset = 4 + (t % 2)
             child_color = "bright_red"
-            child_eye_char = "×"
+            child_eye = "×"
+            child_legs = "█ █  █ █"
             bubble_right = "! Échec x2 -> Escalade StepRouter"
             bubble_right_color = "bright_red"
             status_dot_color = "magenta"
@@ -154,37 +154,36 @@ class TerminalScene:
             bubble_left = "   ★ Bravo !      "
             bubble_left_color = "bright_green"
             child_offset = 8
-            child_color = "bright_green"
-            child_eye_char = "^"
-            child_legs = "▀   ▀" if t % 2 == 0 else "█   █"
+            child_legs = "▀ ▀  ▀ ▀" if t % 2 == 0 else "█ █  █ █"
             bubble_right = f"✓ {s.completed_steps}/{s.total_steps} étapes validées !"
             bubble_right_color = "bright_green"
             status_dot_color = "bright_green"
 
         pad = " " * child_offset
-
-        # Barre de progression
         bar_width = 10
         filled = min(bar_width, int(round((s.completed_steps / max(1, s.total_steps)) * bar_width)))
         progress_bar = "█" * filled + "░" * (bar_width - filled)
 
+        # Silhouette exacte : tête rectangulaire, oreilles sur les côtés + 2 yeux carrés noirs, bas du corps, et 4 pattes sur la ligne pointillée
         markup_lines = [
-            f"[bold #df8257]Welcome to Ai-Sup[/bold #df8257] [dim]v{__version__}[/dim] · "
+            f"[bold #d97757]Welcome to Ai-Sup[/bold #d97757] [dim]v{__version__}[/dim] · "
             f"[bright_blue]{s.planner_name}[/bright_blue] [dim](Planner)[/dim] + "
             f"[{child_color}]{s.executor_name}[/{child_color}] [dim](Executor)[/dim]",
-            "[dim]" + ("·" * 74) + "[/dim]",
-            f"      [white]{star1}[/white]                       [dim]{star2}[/dim]                   [white]▄█████[/white][dim]▒░[/dim]",
-            "            [dim]░░░░░░[/dim]                               [white]██████[/white][dim]▒[/dim]",
-            f"        [dim]░░▒▒░░░░░░▒▒░░[/dim]        [white]{star3}[/white]                 [white]██████[/white][dim]░[/dim]",
-            "      [dim]▒▒░░░░░░░░░░░░░░▒▒[/dim]                         [white]██████[/white][dim]▒[/dim]     [white]▄▄[/white]",
-            "  [dim]*[/dim]                               [dim]░░░░░░[/dim]          [dim]▀█████[/dim][white]▄▄▄[/white][dim]██▀[/dim]",
-            f"[{bubble_left_color}]{bubble_left}[/{bubble_left_color}]            [dim]░░▒▒░░░░░░▒▒░░[/dim]                     [dim]*[/dim]",
-            f"   [bright_blue]▄██████▄[/bright_blue]   {pad}[{child_color}]▄█████▄[/{child_color}]",
-            f"  [bright_blue]██[/bright_blue][black on bright_blue]▪[/black on bright_blue][bright_blue]████[/bright_blue][black on bright_blue]▪[/black on bright_blue][bright_blue]██[/bright_blue]  "
-            f"{pad}[{child_color}]█[/{child_color}][black on {child_color}]{child_eye_char}[/black on {child_color}][{child_color}]███[/{child_color}][black on {child_color}]{child_eye_char}[/black on {child_color}][{child_color}]█[/{child_color}]"
+            "[dim]" + ("·" * 76) + "[/dim]",
+            f"      [white]{star1}[/white]                             [dim]{star2}[/dim]             [white]██████[/white][dim]▒▒░[/dim]",
+            "              [dim]░░░░░░[/dim]                            [white]██[/white][dim]▓▓[/dim]      [dim]▓▓[/dim]",
+            f"        [dim]░░░░  ░░░░░░░░░░[/dim]      [white]{star3}[/white]               [white]███[/white][dim]▒░[/dim]",
+            "      [dim]░░░░░░░░░░░░░░░░░░░░[/dim]                    [white]███[/white][dim]▒░[/dim]",
+            "                                    [dim]░░░░[/dim]        [white]██[/white][dim]▓▓[/dim]      [dim]▓[/dim][white]█[/white]",
+            f"  [dim]*[/dim]                               [dim]░░░░░░░░[/dim]        [dim]▓▒▒[/dim][white]███[/white][dim]▒▒▓[/dim]",
+            f"[{bubble_left_color}]{bubble_left}[/{bubble_left_color}]              [dim]░░░░░░░░░░░░░░[/dim]                        [dim]*[/dim]",
+            f"    [bright_blue]████████[/bright_blue]    {pad} [{child_color}]████████[/{child_color}]",
+            f"   [bright_blue]██[/bright_blue][black on bright_blue]▪[/black on bright_blue][bright_blue]████[/bright_blue][black on bright_blue]▪[/black on bright_blue][bright_blue]██[/bright_blue]   "
+            f"{pad}[{child_color}]██[/{child_color}][black on {child_color}]{child_eye}[/black on {child_color}][{child_color}]████[/{child_color}][black on {child_color}]{child_eye}[/black on {child_color}][{child_color}]██[/{child_color}]"
             + (f"  [{bubble_right_color}]{bubble_right}[/{bubble_right_color}]" if bubble_right else ""),
-            f"[dim]····[/dim][bright_blue]█▀ ▀▀ ▀█[/bright_blue][dim]··[/dim]{pad}[{child_color}]{child_legs}[/{child_color}][dim]"
-            + ("·" * max(10, 48 - child_offset))
+            f"    [bright_blue]████████[/bright_blue]    {pad} [{child_color}]████████[/{child_color}]",
+            f"[dim]····[/dim][bright_blue]█ █  █ █[/bright_blue][dim]····[/dim]{pad} [{child_color}]{child_legs}[/{child_color}][dim]"
+            + ("·" * max(10, 46 - child_offset))
             + "[/dim]",
             "",
             f"[{status_dot_color}]●[/{status_dot_color}] [bold]{s.status_message}[/bold]",
