@@ -69,7 +69,19 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 Une fois installé, l'outil s'utilise via la commande `orch`.
 
-### 3.1 Lister les couples d'IA disponibles (`orch pairings`)
+### 3.1 Prévisualiser l'animation du terminal (`orch demo-ui`)
+
+Pour voir la scène nocturne animée (style Claude Code) avec le **Parent (Planner)** et le **Petit Bonhomme (Executor)** traverser les 4 états (Planification, Exécution ReAct, Escalade `StepRouter`, Succès) sans consommer de tokens API :
+
+```powershell
+orch demo-ui
+# Ou sans installation :
+$env:PYTHONPATH="src"; python -m orchestrator.cli demo-ui
+```
+
+> **Note pour l'intégration CI/CD ou futur Serveur MCP** : Toutes les commandes `orch run` et `orch plan` activent cette scène par défaut, mais acceptent l'option `--no-anim` pour désactiver l'affichage dynamique si vous redirigez la sortie vers un script ou un serveur MCP.
+
+### 3.2 Lister les couples d'IA disponibles (`orch pairings`)
 
 Affiche tous les parentages `Planner -> Executor` configurés dans `config/models.yaml` ainsi que leurs tarifs par million de tokens (entrée / sortie) :
 

@@ -23,13 +23,15 @@ from orchestrator.schemas import Plan, StepStatus
 from orchestrator.tools.file_system import register_filesystem_tools
 from orchestrator.tools.registry import ToolRegistry
 from orchestrator.tools.shell import register_shell_tools
+from orchestrator.ui.terminal_scene import SceneMode, TerminalScene, ensure_utf8_console
 
+ensure_utf8_console()
 app = typer.Typer(
     name="orch",
-    help="Orchestrateur Plan-then-Execute Multi-Modèles (Gemini & Claude).",
+    help="Orchestrateur Plan-then-Execute Multi-Modèles (Gemini & Claude) avec scène animée.",
     add_completion=False,
 )
-console = Console()
+console = Console(legacy_windows=False)
 
 
 def _resolve_config_dir() -> Path:
@@ -65,13 +67,30 @@ def _render_plan(plan: Plan, planner_key: str) -> None:
     console.print(table)
 
 
-async def _async_plan(goal: str, max_budget: float, planner_model: str) -> None:
+async def _async_plan(goal: str, max_budget: float, planner_model: str, no_anim: bool) -> None:
     """Exécute uniquement la phase de planification et affiche le résultat."""
     config_dir = _resolve_config_dir()
     tracker = CostTracker(max_budget=max_budget, models_config_path=config_dir / "models.yaml")
     planner = create_planner(cost_tracker=tracker, model_key=planner_model)
 
-    plan_obj = await planner.plan(goal=goal, context={})
+    scene = TerminalScene(console=console, enabled=not no_anim)
+    scene.update(
+        mode=SceneMode.PLANNING,
+        planner_name=planner_model,
+        executor_name="none",
+        max_budget_usd=max_budget,
+        status_message=f"{planner_model} conçoit le plan d'exécution structuré...",
+    )
+    async with scene.session():
+        plan_obj = await planner.plan(goal=goal, context={})
+        scene.update(
+            mode=SceneMode.SUCCESS,
+            completed_steps=len(plan_obj.steps),
+            total_steps=len(plan_obj.steps),
+            current_cost_usd=tracker.total_cost(),
+            status_message="Plan généré et validé par Pydantic !",
+        )
+
     _render_plan(plan_obj, planner_model)
     console.print(
         f"[bold green]Coût planification :[/bold green] ${tracker.total_cost():.6f} "
@@ -87,8 +106,9 @@ async def _async_run(
     pairing: str | None,
     planner_model: str,
     executor_model: str,
+    no_anim: bool,
 ) -> None:
-    """Exécute le cycle complet Plan-then-Execute avec le couple de modèles sélectionné."""
+    """Exécute le cycle complet Plan-then-Execute avec la scène animée et le couple sélectionné."""
     config_dir = _resolve_config_dir()
     models_yaml = config_dir / "models.yaml"
     router_yaml = config_dir / "router.yaml"
@@ -116,14 +136,23 @@ async def _async_run(
     )
     router = StepRouter(router_config_path=router_yaml)
 
-    console.print(
-        Panel(
-            f"Couple actif : [bold blue]{planner_key}[/bold blue] (Planner) → "
-            f"[bold green]{executor_key}[/bold green] (Executor)\n"
-            f"Objectif : [bold]{goal}[/bold]"
-        )
+    scene = TerminalScene(console=console, enabled=not no_anim)
+    scene.update(
+        mode=SceneMode.PLANNING,
+        planner_name=planner_key,
+        executor_name=executor_key,
+        max_budget_usd=max_budget,
+        status_message=f"{planner_key} découpe l'objectif en étapes atomiques...",
     )
-    current_plan = await planner.plan(goal=goal, context=context.snapshot())
+
+    async with scene.session():
+        current_plan = await planner.plan(goal=goal, context=context.snapshot())
+        scene.update(
+            total_steps=len(current_plan.steps),
+            current_cost_usd=tracker.total_cost(),
+            status_message=f"Plan initial prêt ({len(current_plan.steps)} étapes).",
+        )
+
     _render_plan(current_plan, planner_key)
 
     step_index = 0
@@ -152,44 +181,67 @@ async def _async_run(
         state_for_router["remaining_budget"] = tracker.remaining_budget()
         target = await router.route(step, state_for_router)
 
-        if target == "planner":
-            console.print(
-                f"[bold magenta]Escalade vers {planner_key} (replanification) à l'étape {step.id}...[/bold magenta]"
-            )
-            current_plan = await planner.plan(goal=goal, context=context.snapshot())
-            _render_plan(current_plan, planner_key)
-            context.set("step_retries", {})
-            step_index = 0
-            continue
-
-        console.print(f"[cyan]Exécution de {step.id} via {executor_key}...[/cyan]")
-        result = await executor.execute(step, context.snapshot())
-
-        if result.status == StepStatus.SUCCESS:
-            completed.append(step.id)
-            context.set("completed_steps", completed)
-            outputs = context.get("step_outputs", {})
-            outputs[step.id] = result.output
-            context.set("step_outputs", outputs)
-            console.print(
-                f"[bold green]✓ {step.id} terminé[/bold green] — {result.justification}\n"
-                f"  Coût cumulé : ${tracker.total_cost():.6f} | "
-                f"Budget restant : ${tracker.remaining_budget():.6f}"
-            )
-            step_index += 1
-        else:
-            retries = context.get("step_retries", {})
-            retries[step.id] = int(retries.get(step.id, 0)) + 1
-            context.set("step_retries", retries)
-            console.print(
-                f"[bold red]✗ Échec sur {step.id} (tentative {retries[step.id]}) :[/bold red] "
-                f"{result.justification}"
-            )
-            if tracker.remaining_budget() < 0.25 and retries[step.id] >= 2:
-                console.print(
-                    "[bold red]Arrêt : échecs répétés et budget insuffisant pour replanifier.[/bold red]"
+        async with scene.session():
+            if target == "planner":
+                scene.update(
+                    mode=SceneMode.ESCALATION,
+                    current_step_id=step.id,
+                    current_cost_usd=tracker.total_cost(),
+                    status_message=f"StepRouter : Escalade vers {planner_key} sur {step.id}...",
                 )
-                raise typer.Exit(code=1)
+                current_plan = await planner.plan(goal=goal, context=context.snapshot())
+                context.set("step_retries", {})
+                step_index = 0
+                continue
+
+            tools_hint = ", ".join(step.tools_allowed) if step.tools_allowed else step.type.value
+            scene.update(
+                mode=SceneMode.EXECUTING,
+                current_step_id=step.id,
+                current_tool=f"{step.id} [{tools_hint}]",
+                completed_steps=len(completed),
+                total_steps=len(current_plan.steps),
+                current_cost_usd=tracker.total_cost(),
+                status_message=f"{executor_key} exécute {step.id} : {step.description}",
+            )
+            result = await executor.execute(step, context.snapshot())
+
+            if result.status == StepStatus.SUCCESS:
+                completed.append(step.id)
+                context.set("completed_steps", completed)
+                outputs = context.get("step_outputs", {})
+                outputs[step.id] = result.output
+                context.set("step_outputs", outputs)
+                scene.update(
+                    completed_steps=len(completed),
+                    current_cost_usd=tracker.total_cost(),
+                    status_message=f"✓ {step.id} validé : {result.justification}",
+                )
+                step_index += 1
+            else:
+                retries = context.get("step_retries", {})
+                retries[step.id] = int(retries.get(step.id, 0)) + 1
+                context.set("step_retries", retries)
+                scene.update(
+                    mode=SceneMode.ESCALATION,
+                    current_cost_usd=tracker.total_cost(),
+                    status_message=f"✗ Échec sur {step.id} (tentative {retries[step.id]}) : {result.justification}",
+                )
+                if tracker.remaining_budget() < 0.25 and retries[step.id] >= 2:
+                    console.print(
+                        "[bold red]Arrêt : échecs répétés et budget insuffisant pour replanifier.[/bold red]"
+                    )
+                    raise typer.Exit(code=1)
+
+    async with scene.session():
+        scene.update(
+            mode=SceneMode.SUCCESS,
+            completed_steps=len(current_plan.steps),
+            total_steps=len(current_plan.steps),
+            current_cost_usd=tracker.total_cost(),
+            status_message="Objectif terminé avec succès ! Tous les critères sont validés.",
+        )
+        await asyncio.sleep(0.6)
 
     console.print(
         Panel(
@@ -201,6 +253,53 @@ async def _async_run(
             border_style="green",
         )
     )
+
+
+async def _async_demo_ui(duration_per_phase: float) -> None:
+    """Joue une démonstration complète des 4 états de la scène animée dans le terminal."""
+    scene = TerminalScene(console=console, enabled=True, fps=4.0)
+    async with scene.session():
+        scene.update(
+            mode=SceneMode.PLANNING,
+            planner_name="gemini-4-argon",
+            executor_name="gemini-3.8-flash",
+            completed_steps=0,
+            total_steps=10,
+            current_cost_usd=0.0420,
+            max_budget_usd=1.5000,
+            status_message="Argon (Planner) découpe l'objectif en étapes atomiques...",
+        )
+        await asyncio.sleep(duration_per_phase)
+
+        scene.update(
+            mode=SceneMode.EXECUTING,
+            current_step_id="step_3",
+            current_tool='write_file("parser.py")',
+            completed_steps=3,
+            total_steps=10,
+            current_cost_usd=0.1840,
+            status_message="Flash (Executor) exécute step_3 en boucle ReAct...",
+        )
+        await asyncio.sleep(duration_per_phase)
+
+        scene.update(
+            mode=SceneMode.ESCALATION,
+            current_step_id="step_4",
+            completed_steps=4,
+            total_steps=10,
+            current_cost_usd=0.3120,
+            status_message="StepRouter : 2 échecs sur step_4 -> Escalade vers Argon !",
+        )
+        await asyncio.sleep(duration_per_phase)
+
+        scene.update(
+            mode=SceneMode.SUCCESS,
+            completed_steps=10,
+            total_steps=10,
+            current_cost_usd=0.4950,
+            status_message="Objectif terminé avec succès ! (-58% sur le budget vs 100% Argon)",
+        )
+        await asyncio.sleep(duration_per_phase)
 
 
 @app.command()
@@ -226,6 +325,9 @@ def run(
     interactive: bool = typer.Option(
         False, "--interactive", help="Demander confirmation avant chaque étape."
     ),
+    no_anim: bool = typer.Option(
+        False, "--no-anim", help="Désactiver la scène animée dans le terminal."
+    ),
 ) -> None:
     """Planifie et exécute un objectif sur un projet cible avec le couple d'IA choisi."""
     load_dotenv()
@@ -238,6 +340,7 @@ def run(
             pairing=pairing,
             planner_model=planner_model,
             executor_model=executor_model,
+            no_anim=no_anim,
         )
     )
 
@@ -251,10 +354,30 @@ def plan(
         "--planner",
         help="Modèle planificateur (ex: gemini-4-argon, claude-opus-5.5).",
     ),
+    no_anim: bool = typer.Option(
+        False, "--no-anim", help="Désactiver la scène animée dans le terminal."
+    ),
 ) -> None:
     """Génère et affiche uniquement le plan d'exécution."""
     load_dotenv()
-    asyncio.run(_async_plan(goal=goal, max_budget=max_budget, planner_model=planner_model))
+    asyncio.run(
+        _async_plan(
+            goal=goal,
+            max_budget=max_budget,
+            planner_model=planner_model,
+            no_anim=no_anim,
+        )
+    )
+
+
+@app.command(name="demo-ui")
+def demo_ui(
+    duration: float = typer.Option(
+        2.5, "--duration", help="Durée en secondes de chaque phase de la démonstration."
+    ),
+) -> None:
+    """Lance une démonstration visuelle de la scène animée (Parent Planner + Petit Exécuteur)."""
+    asyncio.run(_async_demo_ui(duration_per_phase=duration))
 
 
 @app.command()

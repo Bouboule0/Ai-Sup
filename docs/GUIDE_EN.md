@@ -69,7 +69,19 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 Once installed, everything is accessible through the `orch` CLI.
 
-### 3.1 List Available AI Pairings (`orch pairings`)
+### 3.1 Preview the Animated Terminal Scene (`orch demo-ui`)
+
+To watch the Claude-Code-inspired night scene with the **Parent (Planner)** and **Child (Executor)** pixel-art mascots cycle through all 4 orchestration states (Planning, ReAct Execution, `StepRouter` Escalation, Success) without spending any API tokens:
+
+```powershell
+orch demo-ui
+# Or without installation:
+$env:PYTHONPATH="src"; python -m orchestrator.cli demo-ui
+```
+
+> **CI/CD & Future MCP Server Note**: `orch run` and `orch plan` display the live animation by default, and support `--no-anim` to disable `rich.live` when piping output to external CLIs or an MCP server.
+
+### 3.2 List Available AI Pairings (`orch pairings`)
 
 Displays all `Planner -> Executor` pairings configured in `config/models.yaml` along with their input/output pricing per 1M tokens:
 
