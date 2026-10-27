@@ -1,4 +1,4 @@
-# Ai-Sup
+# 🤖 Ai-Sup
 
 A minimal, readable, and testable orchestrator based on the **Plan-then-Execute (P-t-E)** paradigm, supporting **multi-model and cross-provider AI pairings** (Google Gemini & Anthropic Claude):
 
@@ -10,7 +10,7 @@ Repository: https://github.com/Bouboule0/Ai-Sup
 
 ---
 
-## Why Plan-then-Execute? Frontier-Only vs. Delegated Orchestration
+## 🤔 Why Plan-then-Execute? Frontier-Only vs. Delegated Orchestration
 
 In autonomous software engineering, token consumption is heavily skewed:
 - **Architecture & Planning (~5–10% of tokens)** requires deep frontier reasoning, global context awareness, and dependency analysis.
@@ -18,22 +18,22 @@ In autonomous software engineering, token consumption is heavily skewed:
 
 Using a frontier model for every single file read, test run, and syntax fix quickly exhausts a student or indie developer's budget. **Ai-Sup** separates architectural reasoning from atomic execution.
 
-### Result Quality, Speed & Behavior Comparison
+### 📊 Result Quality, Speed & Behavior Comparison
 
 | Dimension | 100% Frontier Model (`Argon` or `Opus` only) | Delegated P-t-E (`Planner` → `Executor`) |
 | :--- | :--- | :--- |
 | **Global Architecture** | Excellent — maintains high-level vision throughout. | **Identical** — the Frontier Planner still designs the full `Plan` and `Step` contracts. |
 | **Atomic Code Generation** | Very high, even on ambiguous instructions. | **High when steps are atomic** — `Flash` / `Sonnet` / `3.1 Pro` excel when given clear `success_criteria`. |
 | **Execution Speed (Latency)** | Slower — high time-to-first-token on every tool call. | **2× to 2.7× faster** — lightweight Executors iterate rapidly through file reads and test runs. |
-| **Failure Recovery** | Self-corrects inline, but at frontier token prices (\$10–\$25/1M out). | **Smart Escalation** — Executor retries locally; on repeated failure (`>= 2`), `StepRouter` escalates back to the Planner to replan. |
+| **Failure Recovery** | Self-corrects inline, but at frontier token prices (\$10–\$25/1M out). | **Smart Escalation** — Executor retries locally; on repeated failure (`>= 2`), `StepRouter` escalates to the Planner with richer context. |
 
 ---
 
-## Comparative Multi-Model Benchmark (10-Step Pipeline)
+## 📈 Comparative Multi-Model Benchmark (10-Step Pipeline)
 
 Reproduce this table anytime via `orch benchmark` (or export it with `orch benchmark --output-md benchmark_results.md`).
 
-The benchmark runs a 10-step software engineering pipeline (file inspection, Pydantic modeling, parser implementation, cyclic dependency graph solver, CLI generation, unit tests, and `pytest` verification) through `CostTracker`, `StepRouter`, and `ExecutionContext`:
+The benchmark runs a 10-step software engineering pipeline (file inspection, Pydantic modeling, parser implementation, cyclic dependency graph solver, CLI generation, unit tests, and `pytest` verification) across multiple pairings.
 
 | Pairing ID | Architecture | Planner (Parent) | Executor (Child) | Completion | ReAct Turns | Escalations | Planner Cost | Executor Cost | Total Cost | Savings vs Baseline | Latency |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -46,15 +46,15 @@ The benchmark runs a 10-step software engineering pipeline (file inspection, Pyd
 | `opus-flash` | Delegated P-t-E | `claude-opus-5.5` | `gemini-3.8-flash` | 10/10 (100%) | 24 | 1 | \$0.6900 | \$1.2420 | **\$1.9320** | **-76.8%** | 65.2s |
 | `argon-sonnet` | Delegated P-t-E | `gemini-4-argon` | `claude-sonnet-5.5` | 10/10 (100%) | 20 | 0 | \$0.1290 | \$2.1600 | **\$2.2890** | **-27.3%** | 76.5s |
 
-### Key Takeaways from the Benchmark
-1. **`argon-flash` (`Gemini 4 Argon` → `Gemini 3.8 Flash`)**: Cuts cost by **52.4%** (\$1.50 vs \$3.15) and reduces latency by **2.4×** (62.6s vs 152.5s), even when accounting for 1 automatic escalation back to Argon on the complex cyclic graph solver step (`step_4`).
+### 💡 Key Takeaways from the Benchmark
+1. **`argon-flash` (`Gemini 4 Argon` → `Gemini 3.8 Flash`)**: Cuts cost by **52.4%** (\$1.50 vs \$3.15) and reduces latency by **2.4×** (62.6s vs 152.5s), even when accounting for 1 automatic escalation.
 2. **`argon-pro` (`Gemini 4 Argon` → `Gemini 3.1 Pro`)**: Zero escalations needed on complex algorithmic steps while still saving **45.1%** (\$1.73 vs \$3.15).
 3. **`opus-sonnet` (`Claude Opus 5.5` → `Claude Sonnet 5.5`)**: Cuts Anthropic execution cost by **70.0%** (\$2.51 vs \$8.35) with zero escalations and **2.3×** faster completion.
-4. **`opus-flash` (`Claude Opus 5.5` → `Gemini 3.8 Flash`)**: Cross-provider hybrid pairing combining Opus 5.5 architectural planning with Flash execution speed, saving **76.8%** compared to running `opus-only`.
+4. **`opus-flash` (`Claude Opus 5.5` → `Gemini 3.8 Flash`)**: Cross-provider hybrid pairing combining Opus 5.5 architectural planning with Flash execution speed, saving **76.8%** compared to running the full pipeline on Opus alone.
 
 ---
 
-## Installation
+## 🚀 Installation
 
 ```bash
 git clone https://github.com/Bouboule0/Ai-Sup.git
@@ -66,7 +66,7 @@ cp .env.example .env
 # Configure GEMINI_API_KEY and/or ANTHROPIC_API_KEY in .env
 ```
 
-## CLI Usage
+## 🧠 CLI Usage
 
 List all available AI pairings and their pricing:
 
@@ -99,7 +99,7 @@ Generate a plan only:
 orch plan --goal "Create a Python Fibonacci sequence module with tests" --planner gemini-4-argon
 ```
 
-## Project Structure
+## 🗂️ Project Structure
 
 ```text
 gemini-orchestrator/
@@ -141,6 +141,6 @@ gemini-orchestrator/
         └── test_benchmark.py
 ```
 
-## Cost Warning
+## ⚠️ Cost Warning
 
-Although `CostTracker` halts orchestration as soon as `--max-budget` is reached, a slight overrun on the final in-flight API call is possible depending on the size of the generated output. Always verify model pricing in `config/models.yaml` and set up billing alerts in Google Cloud / Anthropic Console.
+Although `CostTracker` halts orchestration as soon as `--max-budget` is reached, a slight overrun on the final in-flight API call is possible depending on the size of the generated output. Always verify your spend and tune `--max-budget` for your usage patterns.
