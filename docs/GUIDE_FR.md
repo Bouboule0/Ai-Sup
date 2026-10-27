@@ -1,4 +1,4 @@
-# Guide Complet d'Utilisation et de Benchmark — Ai-Sup (`gemini-orchestrator`)
+# Guide Complet d'Utilisation et de Benchmark — Ai-Sup 
 
 > **Version anglaise disponible ici :** [docs/GUIDE_EN.md](./GUIDE_EN.md)
 
