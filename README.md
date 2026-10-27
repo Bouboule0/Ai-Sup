@@ -8,6 +8,10 @@ A minimal, readable, and testable orchestrator based on the **Plan-then-Execute 
 
 Repository: https://github.com/Bouboule0/Ai-Sup
 
+📚 **Full Documentation & Benchmark Guides:**
+- 🇬🇧 **English Guide**: [docs/GUIDE_EN.md](docs/GUIDE_EN.md) *(How to use the CLI, run & customize benchmarks, security sandboxing, state persistence, troubleshooting)*
+- 🇫🇷 **Guide Français**: [docs/GUIDE_FR.md](docs/GUIDE_FR.md) *(Guide complet d'utilisation, lancement et personnalisation des benchmarks, bonnes pratiques, FAQ)*
+
 ---
 
 ## 🤔 Why Plan-then-Execute? Frontier-Only vs. Delegated Orchestration
@@ -118,6 +122,9 @@ gemini-orchestrator/
 ├── config/
 │   ├── models.yaml
 │   └── router.yaml
+├── docs/
+│   ├── GUIDE_EN.md
+│   └── GUIDE_FR.md
 ├── src/
 │   └── orchestrator/
 │       ├── __init__.py
