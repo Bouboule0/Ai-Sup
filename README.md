@@ -1,4 +1,4 @@
-# Ai-Sup (`gemini-orchestrator`)
+# Ai-Sup
 
 A minimal, readable, and testable orchestrator based on the **Plan-then-Execute (P-t-E)** paradigm, supporting **multi-model and cross-provider AI pairings** (Google Gemini & Anthropic Claude):
 
