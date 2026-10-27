@@ -1,8 +1,8 @@
-# Guide Complet d'Utilisation et de Benchmark — Ai-Sup (`gemini-orchestrator`)
+# Guide Complet d'Utilisation et de Benchmark — Ai-Sup 
 
 > **Version anglaise disponible ici :** [docs/GUIDE_EN.md](./GUIDE_EN.md)
 
-Bienvenue dans la documentation complète d'**Ai-Sup**. Ce guide détaille comment installer, utiliser, personnaliser et benchmarker l'orchestrateur **Plan-then-Execute (P-t-E)** multi-modèles (Google Gemini & Anthropic Claude).
+Bienvenue dans la documentation complète d'**Ai-Sup**. Ce guide détaille comment installer, utiliser, personnaliser et benchmarker l'orchestrateur **Plan-then-Execute (P-t-E)** multi-modèles.
 
 ---
 
@@ -26,7 +26,7 @@ Lorsqu'un agent IA développe un projet logiciel :
 
 Utiliser un modèle de frontière pour 100 % des étapes coûte **2 à 4 fois plus cher** et s'avère beaucoup plus lent. **Ai-Sup** délègue donc :
 1. **Le Plan (`Plan`)** au modèle **Planner (Parent)**.
-2. **L'Exécution (`Step` par `Step`)** au modèle **Executor (Enfant)** plus rapide et économique (`Gemini 3.8 Flash`, `Gemini 3.1 Pro`, `Claude Sonnet 5.5`, `Claude Haiku 4.5`).
+2. **L'Exécution (`Step` par `Step`)** au modèle **Executor (Enfant)** plus rapide et économique.
 3. **L'Escalade intelligente (`StepRouter`)** : si l'Exécuteur échoue plusieurs fois de suite sur une étape ardue (par défaut `>= 2` échecs), le routeur redonne automatiquement la main au Planificateur pour replanifier l'étape, tant que le budget restant le permet.
 
 ---
@@ -35,7 +35,7 @@ Utiliser un modèle de frontière pour 100 % des étapes coûte **2 à 4 fois pl
 
 ### Prérequis
 - **Python 3.11+** (testé avec Python 3.12)
-- Une clé API Google Gemini (`GEMINI_API_KEY`) et/ou Anthropic (`ANTHROPIC_API_KEY`) pour les appels réels. *(Aucune clé API n'est requise pour lancer le benchmark simulé ou les tests unitaires).*
+- Une clé API pour les appels réels. *(Aucune clé API n'est requise pour lancer le benchmark simulé ou les tests unitaires).*
 
 ### Installation standard (recommandée)
 
@@ -147,7 +147,7 @@ python -m orchestrator.cli benchmark
 
 ### 4.2 Exporter le tableau comparatif en Markdown
 
-Pour sauvegarder le tableau complet dans un fichier `.md` (idéal pour vos rapports ou commits) :
+Pour sauvegarder le tableau complet dans un fichier `.md` :
 
 ```powershell
 orch benchmark --output-md benchmark_results.md
