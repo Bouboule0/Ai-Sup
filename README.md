@@ -32,8 +32,8 @@ Using a frontier model for every single file read, test run, and syntax fix quic
 | :--- | :--- | :--- |
 | **Global Architecture** | Excellent — maintains high-level vision throughout. | **Identical** — the Frontier Planner still designs the full `Plan` and `Step` contracts. |
 | **Atomic Code Generation** | Very high, even on ambiguous instructions. | **High when steps are atomic** — `Flash` / `Sonnet` / `3.1 Pro` excel when given clear `success_criteria`. |
-| **Execution Speed (Latency)** | Slower — high time-to-first-token on every tool call. | **2× to 2.7× faster** — lightweight Executors iterate rapidly through file reads and test runs. |
-| **Failure Recovery** | Self-corrects inline, but at frontier token prices (\$10–\$25/1M out). | **Smart Escalation** — Executor retries locally; on repeated failure (`>= 2`), `StepRouter` escalates to the Planner with richer context. |
+| **Execution Speed (Latency)** | Slower — high time-to-first-token on every tool call. | **2× to 2.7× faster in the configured simulation** — latency estimates depend on the selected profiles; live API performance may differ. |
+| **Failure Recovery** | Self-corrects inline, but at frontier token prices (\$10–\$20/1M out). | **Smart Escalation** — Executor retries locally; on repeated failure (`>= 2`), `StepRouter` escalates to the Planner with richer context. |
 
 ---
 ### ⚠️ Current AI model supported 
@@ -47,26 +47,28 @@ Examples of architectures are listed just below (along with benchmarks).
 
 ## 📈 Comparative Multi-Model Benchmark (10-Step Pipeline)
 
-Reproduce this table anytime via `orch benchmark` (or export it with `orch benchmark --output-md benchmark_results.md`).
+All benchmark figures, including cost, savings, and latency, are **simulated from configured token and latency profiles**, not live API calls. The table below uses the configured rates through November 30, 2026; Argon changes from $2/$10 to $4/$20 per million input/output tokens on December 1, 2026 (UTC).
 
-The benchmark runs a 10-step software engineering pipeline (file inspection, Pydantic modeling, parser implementation, cyclic dependency graph solver, CLI generation, unit tests, and `pytest` verification) across multiple pairings.
+Generate the table at the current configured rates via `orch benchmark` (or export it with `orch benchmark --output-md benchmark_results.md`).
+
+The benchmark simulates a 10-step software engineering pipeline (file inspection, Pydantic modeling, parser implementation, cyclic dependency graph solver, CLI generation, unit tests, and `pytest` verification) across multiple pairings.
 
 | Pairing ID | Architecture | Planner (Parent) | Executor (Child) | Completion | ReAct Turns | Escalations | Planner Cost | Executor Cost | Total Cost | Savings vs Baseline | Latency |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | `argon-only` | 100% Frontier | `gemini-4-argon` | `gemini-4-argon` | 10/10 (100%) | 20 | 0 | \$0.1290 | \$3.0200 | **\$3.1490** | Baseline (0.0%) | 152.5s |
 | `argon-flash` | Delegated P-t-E | `gemini-4-argon` | `gemini-3.8-flash` | 10/10 (100%) | 24 | 1 | \$0.2580 | \$1.2420 | **\$1.5000** | **-52.4%** | 62.6s |
 | `argon-pro` | Delegated P-t-E | `gemini-4-argon` | `gemini-3.1-pro` | 10/10 (100%) | 20 | 0 | \$0.1290 | \$1.6000 | **\$1.7290** | **-45.1%** | 90.5s |
-| `opus-only` | 100% Frontier | `claude-opus-5.5` | `claude-opus-5.5` | 10/10 (100%) | 20 | 0 | \$0.3450 | \$8.0000 | **\$8.3450** | Baseline (0.0%) | 177.8s |
-| `opus-sonnet` | Delegated P-t-E | `claude-opus-5.5` | `claude-sonnet-5.5` | 10/10 (100%) | 20 | 0 | \$0.3450 | \$2.1600 | **\$2.5050** | **-70.0%** | 77.8s |
-| `opus-haiku` | Delegated P-t-E | `claude-opus-5.5` | `claude-haiku-5.5` | 10/10 (100%) | 36 | 1 | \$0.6900 | \$0.2394 | **\$0.9294** | **-88.9%** | 73.6s |
-| `opus-flash` | Delegated P-t-E | `claude-opus-5.5` | `gemini-3.8-flash` | 10/10 (100%) | 24 | 1 | \$0.6900 | \$1.2420 | **\$1.9320** | **-76.8%** | 65.2s |
+| `opus-only` | 100% Frontier | `claude-opus-5.5` | `claude-opus-5.5` | 10/10 (100%) | 20 | 0 | \$0.2760 | \$6.4000 | **\$6.6760** | Baseline (0.0%) | 177.8s |
+| `opus-sonnet` | Delegated P-t-E | `claude-opus-5.5` | `claude-sonnet-5.5` | 10/10 (100%) | 20 | 0 | \$0.2760 | \$2.1600 | **\$2.4360** | **-63.5%** | 77.8s |
+| `opus-haiku` | Delegated P-t-E | `claude-opus-5.5` | `claude-haiku-5.5` | 10/10 (100%) | 36 | 1 | \$0.5520 | \$0.2394 | **\$0.7914** | **-88.1%** | 73.6s |
+| `opus-flash` | Delegated P-t-E | `claude-opus-5.5` | `gemini-3.8-flash` | 10/10 (100%) | 24 | 1 | \$0.5520 | \$1.2420 | **\$1.7940** | **-73.1%** | 65.2s |
 | `argon-sonnet` | Delegated P-t-E | `gemini-4-argon` | `claude-sonnet-5.5` | 10/10 (100%) | 20 | 0 | \$0.1290 | \$2.1600 | **\$2.2890** | **-27.3%** | 76.5s |
 
-### 💡 Key Takeaways from the Benchmark
+### 💡 Key Takeaways from the Simulation
 1. **`argon-flash` (`Gemini 4 Argon` → `Gemini 3.8 Flash`)**: Cuts cost by **52.4%** (\$1.50 vs \$3.15) and reduces latency by **2.4×** (62.6s vs 152.5s), even when accounting for 1 automatic escalation.
 2. **`argon-pro` (`Gemini 4 Argon` → `Gemini 3.1 Pro`)**: Zero escalations needed on complex algorithmic steps while still saving **45.1%** (\$1.73 vs \$3.15).
-3. **`opus-sonnet` (`Claude Opus 5.5` → `Claude Sonnet 5.5`)**: Cuts Anthropic execution cost by **70.0%** (\$2.51 vs \$8.35) with zero escalations and **2.3×** faster completion.
-4. **`opus-flash` (`Claude Opus 5.5` → `Gemini 3.8 Flash`)**: Cross-provider hybrid pairing combining Opus 5.5 architectural planning with Flash execution speed, saving **76.8%** compared to running the full pipeline on Opus alone.
+3. **`opus-sonnet` (`Claude Opus 5.5` → `Claude Sonnet 5.5`)**: Cuts Anthropic execution cost by **63.5%** (\$2.44 vs \$6.68) with zero escalations and **2.3×** faster completion.
+4. **`opus-flash` (`Claude Opus 5.5` → `Gemini 3.8 Flash`)**: Cross-provider hybrid pairing combining Opus 5.5 architectural planning with Flash execution speed, saving **73.1%** compared to running the full pipeline on Opus alone.
 
 ---
 

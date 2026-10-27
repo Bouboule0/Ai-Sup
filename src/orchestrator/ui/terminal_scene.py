@@ -8,6 +8,7 @@ import sys
 from typing import AsyncIterator
 from rich.console import Console
 from rich.live import Live
+from rich.markup import escape
 from rich.text import Text
 
 from orchestrator import __version__
@@ -31,6 +32,7 @@ class SceneMode(str, Enum):
     EXECUTING = "executing"
     ESCALATION = "escalation"
     SUCCESS = "success"
+    PARTIAL = "partial"
 
 
 @dataclass
@@ -137,7 +139,7 @@ class TerminalScene:
             status_dot_color = "bright_blue"
         elif s.mode == SceneMode.EXECUTING:
             child_offset = 5 + (t % 14)
-            tool_label = s.current_tool or f"run({s.current_step_id})"
+            tool_label = escape(s.current_tool or f"run({s.current_step_id})")
             bubble_right = f"⚡ {tool_label}"
             status_dot_color = "yellow"
         elif s.mode == SceneMode.ESCALATION:
@@ -150,6 +152,11 @@ class TerminalScene:
             bubble_right = "! Échec x2 -> Escalade StepRouter"
             bubble_right_color = "bright_red"
             status_dot_color = "magenta"
+        elif s.mode == SceneMode.PARTIAL:
+            bubble_left = "   Étapes ignorées "
+            bubble_left_color = "yellow"
+            bubble_right = f"{s.completed_steps}/{s.total_steps} étapes validées"
+            status_dot_color = "yellow"
         else:  # SUCCESS
             bubble_left = "   ★ Bravo !      "
             bubble_left_color = "bright_green"
@@ -167,8 +174,8 @@ class TerminalScene:
         # Silhouette exacte : tête rectangulaire, oreilles sur les côtés + 2 yeux carrés noirs, bas du corps, et 4 pattes sur la ligne pointillée
         markup_lines = [
             f"[bold #d97757]Welcome to Ai-Sup[/bold #d97757] [dim]v{__version__}[/dim] · "
-            f"[bright_blue]{s.planner_name}[/bright_blue] [dim](Planner)[/dim] + "
-            f"[{child_color}]{s.executor_name}[/{child_color}] [dim](Executor)[/dim]",
+            f"[bright_blue]{escape(s.planner_name)}[/bright_blue] [dim](Planner)[/dim] + "
+            f"[{child_color}]{escape(s.executor_name)}[/{child_color}] [dim](Executor)[/dim]",
             "[dim]" + ("·" * 76) + "[/dim]",
             f"      [white]{star1}[/white]                             [dim]{star2}[/dim]             [white]██████[/white][dim]▒▒░[/dim]",
             "              [dim]░░░░░░[/dim]                            [white]██[/white][dim]▓▓[/dim]      [dim]▓▓[/dim]",
@@ -186,7 +193,7 @@ class TerminalScene:
             + ("·" * max(10, 46 - child_offset))
             + "[/dim]",
             "",
-            f"[{status_dot_color}]●[/{status_dot_color}] [bold]{s.status_message}[/bold]",
+            f"[{status_dot_color}]●[/{status_dot_color}] [bold]{escape(s.status_message)}[/bold]",
             f"Progression : [bright_green]{progress_bar} {s.completed_steps}/{s.total_steps}[/bright_green]   |   "
             f"Budget : [bold yellow]${s.current_cost_usd:.4f} / ${s.max_budget_usd:.4f}[/bold yellow]",
         ]

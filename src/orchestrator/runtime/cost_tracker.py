@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 import yaml
@@ -31,12 +32,18 @@ class ModelPairing:
 class CostTracker:
     """Suit la consommation de tokens et le coût cumulé par rapport à un budget."""
 
-    def __init__(self, max_budget: float, models_config_path: Path) -> None:
+    def __init__(
+        self,
+        max_budget: float,
+        models_config_path: Path,
+        pricing_date: date | None = None,
+    ) -> None:
         """Initialise le suivi des coûts depuis le fichier models.yaml.
 
         Args:
             max_budget: Budget maximal autorisé en dollars USD.
             models_config_path: Chemin vers config/models.yaml.
+            pricing_date: Date tarifaire UTC, fixée au démarrage du suivi par défaut.
         """
         if max_budget < 0:
             raise ValueError("max_budget doit être positif ou nul.")
@@ -49,19 +56,23 @@ class CostTracker:
         self._pricing_by_key: dict[str, ModelPricing] = {}
         self._pricing_by_id: dict[str, ModelPricing] = {}
         self._pairings: dict[str, ModelPairing] = {}
-        self._load_config(models_config_path)
+        self._load_config(models_config_path, pricing_date or datetime.now(timezone.utc).date())
 
-    def _load_config(self, config_path: Path) -> None:
+    def _load_config(self, config_path: Path, pricing_date: date) -> None:
         """Charge les tarifs et les couples de modèles depuis le fichier YAML."""
         raw: dict[str, Any] = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
         models = raw.get("models", {})
         for role_key, info in models.items():
+            effective_pricing = info
+            for rate in sorted(info.get("pricing_schedule", []), key=lambda r: str(r["effective_from"])):
+                if date.fromisoformat(str(rate["effective_from"])) <= pricing_date:
+                    effective_pricing = rate
             pricing = ModelPricing(
                 key=str(role_key),
                 model_id=str(info["id"]),
                 provider=str(info.get("provider", "google")),
-                input_cost_per_million=float(info["input_cost_per_million"]),
-                output_cost_per_million=float(info["output_cost_per_million"]),
+                input_cost_per_million=float(effective_pricing["input_cost_per_million"]),
+                output_cost_per_million=float(effective_pricing["output_cost_per_million"]),
             )
             self._pricing_by_key[role_key] = pricing
             self._pricing_by_id[pricing.model_id] = pricing

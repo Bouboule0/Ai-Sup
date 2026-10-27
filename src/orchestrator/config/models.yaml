@@ -3,8 +3,13 @@ models:
   planner:
     id: "gemini-4-argon" # À VÉRIFIER: exact model ID in Google GenAI API
     provider: "google"
+    # $2/$10 through November 30, 2026; $4/$20 from December 1 (UTC).
     input_cost_per_million: 2.00
     output_cost_per_million: 10.00
+    pricing_schedule:
+      - effective_from: "2026-12-01"
+        input_cost_per_million: 4.00
+        output_cost_per_million: 20.00
     capabilities:
       structured_output: true
       function_calling: true
@@ -22,14 +27,19 @@ models:
   gemini-4-argon:
     id: "gemini-4-argon"
     provider: "google"
+    # $2/$10 through November 30, 2026; $4/$20 from December 1 (UTC).
     input_cost_per_million: 2.00
     output_cost_per_million: 10.00
+    pricing_schedule:
+      - effective_from: "2026-12-01"
+        input_cost_per_million: 4.00
+        output_cost_per_million: 20.00
     capabilities:
       structured_output: true
       function_calling: true
 
   gemini-3.1-pro:
-    id: "gemini-3.1-pro"
+    id: "gemini-3.1-pro-preview"
     provider: "google"
     input_cost_per_million: 1.25
     output_cost_per_million: 5.00
@@ -50,8 +60,8 @@ models:
   claude-opus-5.5:
     id: "claude-opus-5-5" # À VÉRIFIER: exact model ID in Anthropic Messages API
     provider: "anthropic"
-    input_cost_per_million: 5.00
-    output_cost_per_million: 25.00
+    input_cost_per_million: 4.00
+    output_cost_per_million: 20.00
     capabilities:
       structured_output: true
       function_calling: true

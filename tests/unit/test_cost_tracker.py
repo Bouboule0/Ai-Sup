@@ -56,3 +56,33 @@ def test_negative_tokens_rejected(models_config_file: Path) -> None:
     tracker = CostTracker(max_budget=2.0, models_config_path=models_config_file)
     with pytest.raises(ValueError):
         tracker.record_call("executor", input_tokens=-10, output_tokens=100)
+
+
+@pytest.mark.parametrize("config_path", ["config/models.yaml", "src/orchestrator/config/models.yaml"])
+@pytest.mark.parametrize("pricing_day, expected_prices", [
+    ("2026-11-30", (2.0, 10.0)),
+    ("2026-12-01", (4.0, 20.0)),
+])
+def test_configured_prices_at_argon_transition(
+    config_path: str, pricing_day: str, expected_prices: tuple[float, float],
+) -> None:
+    from datetime import date
+
+    root = Path(__file__).resolve().parents[2]
+    tracker = CostTracker(10, root / config_path, pricing_date=date.fromisoformat(pricing_day))
+    for key in ("planner", "gemini-4-argon"):
+        price = tracker.get_model_pricing(key)
+        assert (price.input_cost_per_million, price.output_cost_per_million) == expected_prices
+        assert tracker.record_call(key, 1_000, 1_000) == pytest.approx(sum(expected_prices) / 1_000)
+    opus = tracker.get_model_pricing("claude-opus-5.5")
+    assert (opus.input_cost_per_million, opus.output_cost_per_million) == (4.0, 20.0)
+    assert tracker.get_model_id("gemini-3.1-pro") == "gemini-3.1-pro-preview"
+
+
+def test_packaged_model_config_matches_source() -> None:
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    assert yaml.safe_load((root / "config/models.yaml").read_text()) == yaml.safe_load(
+        (root / "src/orchestrator/config/models.yaml").read_text()
+    )

@@ -204,3 +204,63 @@ def test_finding_4_shell_blocks_inline_code_and_path_traversal(tmp_path: Path) -
     # Commandes légitimes confinées au projet
     assert is_command_allowed("pytest -q", allowed, project_root=tmp_path) is True
     assert is_command_allowed("python test_app.py", allowed, project_root=tmp_path) is True
+
+
+@pytest.mark.parametrize("command", ['python -Bc "print(1)"', 'python -Be "print(1)"'])
+def test_shell_rejects_clustered_inline_execution(command: str, tmp_path: Path) -> None:
+    assert not is_command_allowed(command, ["python"], project_root=tmp_path)
+
+
+@pytest.mark.parametrize("executor_class", [FlashExecutor, AnthropicExecutor])
+def test_executor_fails_for_unregistered_tools(
+    executor_class, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    tracker = CostTracker(5, _resolve_config_dir() / "models.yaml")
+    executor = executor_class(cost_tracker=tracker, tool_registry=ToolRegistry())
+    step = Step(id="step_1", type=StepType.CODE, description="work", success_criteria="done",
+                tools_allowed=["missing_tool"])
+    result = asyncio.run(executor.execute(step, {}))
+    assert result.status == StepStatus.FAILED
+    assert result.step_id == step.id
+    assert "missing_tool" in (result.error or "")
+    assert tracker.total_cost() == 0
+
+
+@pytest.mark.parametrize("role", ["planner", "executor"])
+@pytest.mark.parametrize("counts, expected", [
+    ({"candidates_token_count": 10, "thoughts_token_count": 7}, 17),
+    ({"candidates_token_count": None, "thoughts_token_count": 7}, 7),
+    ({"candidates_token_count": 10, "thoughts_token_count": None}, 10),
+    ({}, 0),
+    (None, 0),
+])
+def test_gemini_accounts_for_thinking_tokens_and_uses_json_schema(
+    role: str, counts, expected: int, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+    from orchestrator.planner.argon_planner import ArgonPlanner
+    from orchestrator.schemas import ExecutionResult, Plan
+
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    tracker = CostTracker(5, _resolve_config_dir() / "models.yaml")
+    step = Step(id="step_1", type=StepType.CODE, description="work", success_criteria="done")
+    payload = (Plan(goal="goal", summary="plan", steps=[step]) if role == "planner" else
+               ExecutionResult(step_id=step.id, status=StepStatus.SUCCESS, output="done", justification="done"))
+
+    async def generate_content(**kwargs):
+        if role == "executor":
+            config = kwargs["config"]
+            assert config.response_schema is None
+            assert config.response_json_schema == ExecutionResult.model_json_schema()
+        return SimpleNamespace(text=payload.model_dump_json(), usage_metadata=(
+            SimpleNamespace(prompt_token_count=0, **counts) if counts is not None else None
+        ))
+
+    actor = (ArgonPlanner(tracker) if role == "planner" else FlashExecutor(tracker, ToolRegistry()))
+    actor._client = SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(generate_content=generate_content)))
+    result = asyncio.run(actor.plan("goal", {}) if role == "planner" else actor.execute(step, {}))
+    assert result == payload
+    price = tracker.get_model_pricing(role).output_cost_per_million
+    assert tracker.total_cost() == pytest.approx(expected * price / 1_000_000)

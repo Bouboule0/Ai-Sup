@@ -54,7 +54,16 @@ class FlashExecutor(BaseExecutor):
 
     async def execute(self, step: Step, state: dict[str, Any]) -> ExecutionResult:
         """Exécute une étape via une boucle ReAct courte avec le modèle Gemini configuré."""
-        allowed_tools = self._tool_registry.get_tools(step.tools_allowed)
+        try:
+            allowed_tools = self._tool_registry.get_tools(step.tools_allowed)
+        except KeyError as exc:
+            return ExecutionResult(
+                step_id=step.id,
+                status=StepStatus.FAILED,
+                output="",
+                justification="Un outil demandé par le plan n'est pas enregistré.",
+                error=str(exc),
+            )
         tools_map = {t.name: t for t in allowed_tools}
         tools_spec = [
             {
@@ -80,22 +89,22 @@ class FlashExecutor(BaseExecutor):
 
             prompt = self._build_prompt(step, state, tools_spec, observations)
 
-            # À VÉRIFIER: confirmer les paramètres exacts de GenerateContentConfig
-            # avec response_schema=ExecutionResult.
             response = await self._client.aio.models.generate_content(
                 model=self._model_id,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=EXECUTOR_SYSTEM_PROMPT,
                     response_mime_type="application/json",
-                    response_schema=ExecutionResult,
+                    response_json_schema=ExecutionResult.model_json_schema(),
                     temperature=0.1,
                 ),
             )
 
             usage = getattr(response, "usage_metadata", None)
             input_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
-            output_tokens = int(getattr(usage, "candidates_token_count", 0) or 0)
+            output_tokens = int(getattr(usage, "candidates_token_count", 0) or 0) + int(
+                getattr(usage, "thoughts_token_count", 0) or 0
+            )
             self._cost_tracker.record_call(
                 self._model_key, input_tokens, output_tokens, role="executor"
             )

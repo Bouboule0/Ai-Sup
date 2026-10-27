@@ -201,13 +201,24 @@ def build_benchmark_plan() -> Plan:
     )
 
 
+def _resolve_simulation_profile(cost_tracker: CostTracker, model_key: str) -> ModelSimulationProfile:
+    pricing = cost_tracker.get_model_pricing(model_key)
+    profile = SIMULATION_PROFILES.get(pricing.key) or SIMULATION_PROFILES.get(pricing.model_id)
+    if profile is None:
+        raise ValueError(
+            f"No simulation profile for configuration key '{pricing.key}' "
+            f"or model ID '{pricing.model_id}'."
+        )
+    return profile
+
+
 class SimulatedPlanner(BasePlanner):
     """Planificateur de simulation enregistrant les tokens et la latence réalistes du modèle."""
 
     def __init__(self, cost_tracker: CostTracker, model_key: str) -> None:
         self._cost_tracker = cost_tracker
         self._model_key = model_key
-        self._profile = SIMULATION_PROFILES[model_key]
+        self._profile = _resolve_simulation_profile(cost_tracker, model_key)
         self.total_latency_s = 0.0
         self.plan_calls = 0
 
@@ -230,7 +241,7 @@ class SimulatedExecutor(BaseExecutor):
     def __init__(self, cost_tracker: CostTracker, model_key: str) -> None:
         self._cost_tracker = cost_tracker
         self._model_key = model_key
-        self._profile = SIMULATION_PROFILES[model_key]
+        self._profile = _resolve_simulation_profile(cost_tracker, model_key)
         self.total_latency_s = 0.0
         self.react_turns = 0
         self._replanned_steps: set[str] = set()
@@ -413,7 +424,8 @@ async def run_comparative_benchmark(
 def render_benchmark_rich_table(entries: list[BenchmarkEntry], console: Console) -> None:
     """Affiche le tableau comparatif complet dans la console via Rich."""
     table = Table(
-        title="Benchmark Comparatif Multi-Modèles : 100% Frontier vs Plan-then-Execute (10 étapes)",
+        title="Benchmark simulé : 100% Frontier vs Plan-then-Execute (10 étapes)",
+        caption="Coûts, économies et latences simulés à partir des profils configurés ; aucun appel API.",
         show_lines=True,
     )
     table.add_column("Pairing ID", style="bold cyan", no_wrap=True)
@@ -433,7 +445,7 @@ def render_benchmark_rich_table(entries: list[BenchmarkEntry], console: Console)
         savings_str = (
             "Baseline (0.0%)"
             if e.savings_vs_baseline_pct == 0.0
-            else f"-{e.savings_vs_baseline_pct:.1f}%"
+            else f"{-e.savings_vs_baseline_pct:+.1f}%"
         )
         table.add_row(
             e.pairing_id,
@@ -456,6 +468,7 @@ def render_benchmark_rich_table(entries: list[BenchmarkEntry], console: Console)
 def format_benchmark_markdown_table(entries: list[BenchmarkEntry]) -> str:
     """Génère un tableau Markdown à partir des résultats du benchmark."""
     headers = [
+        "Simulated costs, savings, and latency from configured token profiles; no live API calls.\n",
         "| Pairing ID | Architecture | Planner (Parent) | Executor (Child) | Completion | ReAct Turns | Escalations | Planner Cost | Executor Cost | Total Cost | Savings vs Baseline | Latency |",
         "| :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
@@ -464,7 +477,7 @@ def format_benchmark_markdown_table(entries: list[BenchmarkEntry]) -> str:
         savings_str = (
             "Baseline (0.0%)"
             if e.savings_vs_baseline_pct == 0.0
-            else f"**-{e.savings_vs_baseline_pct:.1f}%**"
+            else f"**{-e.savings_vs_baseline_pct:+.1f}%**"
         )
         rows.append(
             f"| `{e.pairing_id}` | {e.architecture} | `{e.planner_model}` | `{e.executor_model}` | "

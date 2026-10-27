@@ -65,7 +65,9 @@ class ArgonPlanner(BasePlanner):
 
         usage = getattr(response, "usage_metadata", None)
         input_tokens = int(getattr(usage, "prompt_token_count", 0) or 0)
-        output_tokens = int(getattr(usage, "candidates_token_count", 0) or 0)
+        output_tokens = int(getattr(usage, "candidates_token_count", 0) or 0) + int(
+            getattr(usage, "thoughts_token_count", 0) or 0
+        )
         self._cost_tracker.record_call(
             self._model_key, input_tokens, output_tokens, role="planner"
         )

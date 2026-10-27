@@ -46,6 +46,9 @@ def _is_argument_safe(token: str, project_root: Path | None) -> bool:
     for flag in FORBIDDEN_INLINE_EXEC_FLAGS:
         if token.startswith(f"{flag}="):
             return False
+    if token.startswith("-") and not token.startswith("--"):
+        if any(flag in token[1:] for flag in ("c", "e")):
+            return False
 
     candidate = _extract_candidate_path(token)
     if candidate is None:

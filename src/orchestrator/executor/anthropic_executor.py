@@ -40,7 +40,16 @@ class AnthropicExecutor(BaseExecutor):
 
     async def execute(self, step: Step, state: dict[str, Any]) -> ExecutionResult:
         """Exécute une étape via une boucle ReAct courte avec un modèle Anthropic Claude."""
-        allowed_tools = self._tool_registry.get_tools(step.tools_allowed)
+        try:
+            allowed_tools = self._tool_registry.get_tools(step.tools_allowed)
+        except KeyError as exc:
+            return ExecutionResult(
+                step_id=step.id,
+                status=StepStatus.FAILED,
+                output="",
+                justification="Un outil demandé par le plan n'est pas enregistré.",
+                error=str(exc),
+            )
         tools_map = {t.name: t for t in allowed_tools}
         tools_spec = [
             {

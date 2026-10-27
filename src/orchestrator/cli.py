@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 from dotenv import load_dotenv
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
@@ -56,7 +57,7 @@ def _resolve_config_dir() -> Path:
 
 def _render_plan(plan: Plan, planner_key: str) -> None:
     """Affiche un Plan dans une table Rich."""
-    table = Table(title=f"Plan ({planner_key}) : {plan.goal}")
+    table = Table(title=f"Plan ({escape(planner_key)}) : {escape(plan.goal)}")
     table.add_column("ID", style="cyan", no_wrap=True)
     table.add_column("Type", style="magenta")
     table.add_column("Description", style="white")
@@ -65,13 +66,13 @@ def _render_plan(plan: Plan, planner_key: str) -> None:
 
     for step in plan.steps:
         table.add_row(
-            step.id,
+            escape(step.id),
             step.type.value,
-            step.description,
-            ", ".join(step.tools_allowed) or "-",
-            ", ".join(step.depends_on) or "-",
+            escape(step.description),
+            escape(", ".join(step.tools_allowed)) or "-",
+            escape(", ".join(step.depends_on)) or "-",
         )
-    console.print(Panel(plan.summary, title=f"Stratégie ({planner_key})", border_style="blue"))
+    console.print(Panel(escape(plan.summary), title=f"Stratégie ({escape(planner_key)})", border_style="blue"))
     console.print(table)
 
 
@@ -94,7 +95,7 @@ async def _async_plan(goal: str, max_budget: float, planner_model: str, no_anim:
         try:
             plan_obj.validate_dependencies()
         except ValueError as exc:
-            console.print(f"[bold red]Plan invalide : {exc}[/bold red]")
+            console.print(f"[bold red]Plan invalide : {escape(str(exc))}[/bold red]")
             raise typer.Exit(code=1) from exc
         scene.update(
             mode=SceneMode.SUCCESS,
@@ -163,7 +164,7 @@ async def _async_run(
         try:
             current_plan.validate_dependencies(context.get("completed_steps", []))
         except ValueError as exc:
-            console.print(f"[bold red]Plan initial invalide : {exc}[/bold red]")
+            console.print(f"[bold red]Plan initial invalide : {escape(str(exc))}[/bold red]")
             raise typer.Exit(code=1) from exc
         scene.update(
             total_steps=len(current_plan.steps),
@@ -174,6 +175,7 @@ async def _async_run(
     _render_plan(current_plan, planner_key)
 
     step_index = 0
+    skipped_steps: set[str] = set()
     while step_index < len(current_plan.steps):
         if tracker.is_over_budget():
             console.print("[bold red]Arrêt : budget maximum dépassé ![/bold red]")
@@ -181,21 +183,22 @@ async def _async_run(
 
         step = current_plan.steps[step_index]
         completed: list[str] = context.get("completed_steps", [])
-        if step.id in completed:
+        if step.id in completed or step.id in skipped_steps:
             step_index += 1
             continue
 
         unmet_deps = [dep for dep in step.depends_on if dep not in completed]
         if unmet_deps:
             console.print(
-                f"[bold red]Dépendances non satisfaites pour {step.id} : {unmet_deps}[/bold red]"
+                f"[bold red]Dépendances non satisfaites pour {escape(step.id)} : {escape(str(unmet_deps))}[/bold red]"
             )
             raise typer.Exit(code=1)
 
         if interactive:
             proceed = typer.confirm(f"Exécuter l'étape '{step.id}' ({step.description}) ?")
             if not proceed:
-                console.print(f"[yellow]Étape {step.id} ignorée par l'utilisateur.[/yellow]")
+                skipped_steps.add(step.id)
+                console.print(f"[yellow]Étape {escape(step.id)} ignorée par l'utilisateur.[/yellow]")
                 step_index += 1
                 continue
 
@@ -215,7 +218,7 @@ async def _async_run(
                 try:
                     current_plan.validate_dependencies(context.get("completed_steps", []))
                 except ValueError as exc:
-                    console.print(f"[bold red]Plan replanifié invalide : {exc}[/bold red]")
+                    console.print(f"[bold red]Plan replanifié invalide : {escape(str(exc))}[/bold red]")
                     raise typer.Exit(code=1) from exc
                 context.set("step_retries", {})
                 step_index = 0
@@ -274,26 +277,35 @@ async def _async_run(
                     )
                     raise typer.Exit(code=1)
 
+    completion_message = (
+        "Exécution partielle : étapes ignorées : " + ", ".join(sorted(skipped_steps))
+        if skipped_steps
+        else "Objectif terminé avec succès ! Tous les critères sont validés."
+    )
+    completion_color = "yellow" if skipped_steps else "green"
+    completed_final = context.get("completed_steps", [])
     async with scene.session():
         scene.update(
-            mode=SceneMode.SUCCESS,
-            completed_steps=len(current_plan.steps),
+            mode=SceneMode.PARTIAL if skipped_steps else SceneMode.SUCCESS,
+            completed_steps=sum(step.id in completed_final for step in current_plan.steps),
             total_steps=len(current_plan.steps),
             current_cost_usd=tracker.total_cost(),
-            status_message="Objectif terminé avec succès ! Tous les critères sont validés.",
+            status_message=completion_message,
         )
         await asyncio.sleep(0.6)
 
     console.print(
         Panel(
-            f"[bold green]Objectif terminé avec succès ![/bold green]\n"
-            f"Coût Planner ({planner_key}) : ${tracker.planner_cost():.6f} | "
-            f"Coût Executor ({executor_key}) : ${tracker.executor_cost():.6f}\n"
+            f"[bold {completion_color}]{escape(completion_message)}[/bold {completion_color}]\n"
+            f"Coût Planner ({escape(planner_key)}) : ${tracker.planner_cost():.6f} | "
+            f"Coût Executor ({escape(executor_key)}) : ${tracker.executor_cost():.6f}\n"
             f"Coût total : ${tracker.total_cost():.6f} | "
             f"Budget restant : ${tracker.remaining_budget():.6f}",
-            border_style="green",
+            border_style=completion_color,
         )
     )
+    if skipped_steps:
+        raise typer.Exit(code=1)
 
 
 async def _async_demo_ui(duration_per_phase: float, pairing: str) -> None:
