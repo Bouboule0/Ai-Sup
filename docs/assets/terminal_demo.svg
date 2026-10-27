@@ -6,7 +6,6 @@
       .mono {
         font-family: 'Cascadia Mono', 'Consolas', 'JetBrains Mono', 'SFMono-Regular', 'Courier New', monospace;
         font-size: 14px;
-        white-space: pre;
         shape-rendering: auto;
       }
       .title-orange { fill: #d97757; font-weight: bold; }
@@ -88,7 +87,7 @@
       .bouncer { animation: bounce 0.55s ease-in-out infinite; }
     </style>
 
-    <!-- Dither Patterns matching Claude Code's ░ ▒ ▓ shading -->
+    <!-- Dither Patterns matching Claude Code's shading -->
     <pattern id="dither-cloud" width="4" height="4" patternUnits="userSpaceOnUse">
       <rect width="4" height="4" fill="#27272a"/>
       <rect x="0" y="0" width="2" height="2" fill="#52525b"/>
@@ -110,15 +109,8 @@
   <rect class="bg" x="0" y="0" width="820" height="370" rx="10" />
   <rect class="border" x="1" y="1" width="818" height="368" rx="10" />
 
-  <!-- Top Header (Claude Code style) -->
-  <text x="24" y="34" class="mono">
-    <tspan class="title-orange">Welcome to Ai-Sup</tspan>
-    <tspan class="dim"> v0.1.0 · </tspan>
-    <tspan fill="#60a5fa">gemini-4-argon</tspan>
-    <tspan class="dim"> (Planner) + </tspan>
-    <tspan fill="#d97757">gemini-3.8-flash</tspan>
-    <tspan class="dim"> (Executor)</tspan>
-  </text>
+  <!-- Top Header aligned flush left at x=24 -->
+  <text x="24" y="34" class="mono"><tspan class="title-orange">Welcome to Ai-Sup</tspan><tspan class="dim"> v0.1.0 · </tspan><tspan fill="#60a5fa">gemini-4-argon</tspan><tspan class="dim"> (Planner) + </tspan><tspan fill="#d97757">gemini-3.8-flash</tspan><tspan class="dim"> (Executor)</tspan></text>
 
   <!-- Top Dotted Separator Line -->
   <text x="24" y="56" class="mono dim">··························································································</text>
@@ -146,7 +138,7 @@
     <rect x="432" y="200" width="210" height="16" fill="url(#dither-cloud)" />
   </g>
 
-  <!-- Pixel-Block Crescent Moon "C" (Exact pixel grid from Claude Code screenshot) -->
+  <!-- Pixel-Block Crescent Moon "C" -->
   <g transform="translate(592, 68)">
     <!-- Row 1 -->
     <rect x="26" y="0"  width="65" height="16" fill="#e4e4e7" />
@@ -184,15 +176,11 @@
   <!-- PARENT PLANNER MASCOT (Left - Blue Architect in Claude Block Style)-->
   <!-- ================================================================= -->
   <g transform="translate(54, 190)">
-    <!-- Head top -->
     <rect x="10" y="0" width="80" height="14" fill="#60a5fa" />
-    <!-- Middle with side ears & dark square eyes -->
     <rect x="0"  y="14" width="100" height="16" fill="#60a5fa" />
     <rect x="22" y="17" width="10" height="10" fill="#18181b" />
     <rect x="68" y="17" width="10" height="10" fill="#18181b" />
-    <!-- Lower torso -->
     <rect x="10" y="30" width="80" height="16" fill="#60a5fa" />
-    <!-- 4 Legs standing on ground line (covering dots behind) -->
     <rect x="10" y="46" width="80" height="18" fill="#18181b" />
     <rect x="10" y="46" width="12" height="18" fill="#60a5fa" />
     <rect x="30" y="46" width="12" height="18" fill="#60a5fa" />
@@ -205,7 +193,6 @@
   <!-- ================================================================= -->
   <g class="p1">
     <text x="58" y="178" class="mono" fill="#93c5fd" font-weight="bold">[Plan...]</text>
-    <!-- Authentic Claude Code Mascot (Waiting) -->
     <g transform="translate(195, 190)">
       <rect x="12" y="0"  width="96" height="14" fill="#d97757" />
       <rect x="0"  y="14" width="120" height="16" fill="#d97757" />
@@ -218,16 +205,8 @@
       <rect x="73" y="46" width="13" height="18" fill="#d97757" />
       <rect x="95" y="46" width="13" height="18" fill="#d97757" />
     </g>
-    <text x="32" y="294" class="mono">
-      <tspan fill="#60a5fa">●</tspan>
-      <tspan class="white-txt" font-weight="bold"> Argon (Planner)</tspan>
-      <tspan fill="#a1a1aa"> designs the atomic execution plan (JSON validated)...</tspan>
-    </text>
-    <text x="32" y="324" class="mono">
-      <tspan class="dim">&gt; 1. </tspan><tspan fill="#60a5fa" font-weight="bold">Phase: Planning ✓</tspan>
-      <tspan class="dim">   |   Steps: </tspan><tspan fill="#34d399">█░░░░░░░░░ 1/10</tspan>
-      <tspan class="dim">   |   Cost: </tspan><tspan fill="#fbbf24" font-weight="bold">$0.0420 / $1.5000</tspan>
-    </text>
+    <text x="24" y="294" class="mono"><tspan fill="#60a5fa">● </tspan><tspan class="white-txt" font-weight="bold">Argon (Planner)</tspan><tspan fill="#a1a1aa"> designs the atomic execution plan (JSON validated)...</tspan></text>
+    <text x="24" y="324" class="mono"><tspan class="dim">&gt; 1. </tspan><tspan fill="#60a5fa" font-weight="bold">Phase: Planning ✓</tspan><tspan class="dim"> | Steps: </tspan><tspan fill="#34d399">█░░░░░░░░░ 1/10</tspan><tspan class="dim"> | Budget: </tspan><tspan fill="#fbbf24" font-weight="bold">$0.0420 / $1.5000</tspan></text>
   </g>
 
   <!-- ================================================================= -->
@@ -242,14 +221,12 @@
         <rect x="83" y="17" width="11" height="11" fill="#18181b" />
         <rect x="12" y="30" width="96" height="16" fill="#d97757" />
         <rect x="12" y="46" width="96" height="18" fill="#18181b" />
-        <!-- Animated 4 legs Pose A -->
         <g class="leg-step-a">
           <rect x="12" y="46" width="13" height="18" fill="#d97757" />
           <rect x="34" y="46" width="13" height="12" fill="#d97757" />
           <rect x="73" y="46" width="13" height="18" fill="#d97757" />
           <rect x="95" y="46" width="13" height="12" fill="#d97757" />
         </g>
-        <!-- Animated 4 legs Pose B -->
         <g class="leg-step-b">
           <rect x="12" y="46" width="13" height="12" fill="#d97757" />
           <rect x="34" y="46" width="13" height="18" fill="#d97757" />
@@ -259,18 +236,8 @@
         <text x="134" y="32" class="mono" fill="#fbbf24" font-weight="bold">⚡ write_file("parser.py") · pytest</text>
       </g>
     </g>
-    <text x="32" y="294" class="mono">
-      <tspan fill="#d97757">●</tspan>
-      <tspan class="white-txt" font-weight="bold"> Flash (Executor)</tspan>
-      <tspan fill="#a1a1aa"> runs </tspan>
-      <tspan fill="#fbbf24" font-weight="bold">step_3</tspan>
-      <tspan fill="#a1a1aa"> in fast ReAct tool loop (Turn 2/4)...</tspan>
-    </text>
-    <text x="32" y="324" class="mono">
-      <tspan class="dim">&gt; 2. </tspan><tspan fill="#fbbf24" font-weight="bold">Phase: ReAct Loop ✓</tspan>
-      <tspan class="dim"> |   Steps: </tspan><tspan fill="#34d399">████░░░░░░ 4/10</tspan>
-      <tspan class="dim">   |   Cost: </tspan><tspan fill="#fbbf24" font-weight="bold">$0.1840 / $1.5000</tspan>
-    </text>
+    <text x="24" y="294" class="mono"><tspan fill="#d97757">● </tspan><tspan class="white-txt" font-weight="bold">Flash (Executor)</tspan><tspan fill="#a1a1aa"> runs </tspan><tspan fill="#fbbf24" font-weight="bold">step_3</tspan><tspan fill="#a1a1aa"> in fast ReAct tool loop (Turn 2/4)...</tspan></text>
+    <text x="24" y="324" class="mono"><tspan class="dim">&gt; 2. </tspan><tspan fill="#fbbf24" font-weight="bold">Phase: ReAct Loop ✓</tspan><tspan class="dim"> | Steps: </tspan><tspan fill="#34d399">████░░░░░░ 4/10</tspan><tspan class="dim"> | Budget: </tspan><tspan fill="#fbbf24" font-weight="bold">$0.1840 / $1.5000</tspan></text>
   </g>
 
   <!-- ================================================================= -->
@@ -293,20 +260,8 @@
         <text x="134" y="32" class="mono" fill="#f87171" font-weight="bold">! Retry 2/2 -&gt; Escalate to Argon</text>
       </g>
     </g>
-    <text x="32" y="294" class="mono">
-      <tspan fill="#c084fc">●</tspan>
-      <tspan class="white-txt" font-weight="bold"> StepRouter</tspan>
-      <tspan fill="#a1a1aa"> : 2 failures on complex </tspan>
-      <tspan fill="#f87171" font-weight="bold">step_4</tspan>
-      <tspan fill="#a1a1aa"> → Escalating back to </tspan>
-      <tspan fill="#60a5fa" font-weight="bold">Argon</tspan>
-      <tspan fill="#a1a1aa">!</tspan>
-    </text>
-    <text x="32" y="324" class="mono">
-      <tspan class="dim">&gt; 3. </tspan><tspan fill="#c084fc" font-weight="bold">Phase: Escalation ✓</tspan>
-      <tspan class="dim"> |   Steps: </tspan><tspan fill="#f87171">██████░░░░ 6/10</tspan>
-      <tspan class="dim">   |   Cost: </tspan><tspan fill="#fbbf24" font-weight="bold">$0.3120 / $1.5000</tspan>
-    </text>
+    <text x="24" y="294" class="mono"><tspan fill="#c084fc">● </tspan><tspan class="white-txt" font-weight="bold">StepRouter</tspan><tspan fill="#a1a1aa"> : 2 failures on complex </tspan><tspan fill="#f87171" font-weight="bold">step_4</tspan><tspan fill="#a1a1aa"> → Escalating back to </tspan><tspan fill="#60a5fa" font-weight="bold">Argon</tspan><tspan fill="#a1a1aa">!</tspan></text>
+    <text x="24" y="324" class="mono"><tspan class="dim">&gt; 3. </tspan><tspan fill="#c084fc" font-weight="bold">Phase: Escalation ✓</tspan><tspan class="dim"> | Steps: </tspan><tspan fill="#f87171">██████░░░░ 6/10</tspan><tspan class="dim"> | Budget: </tspan><tspan fill="#fbbf24" font-weight="bold">$0.3120 / $1.5000</tspan></text>
   </g>
 
   <!-- ================================================================= -->
@@ -328,15 +283,7 @@
         <text x="134" y="32" class="mono" fill="#4ade80" font-weight="bold">✓ 10/10 steps validated! (-58% cost)</text>
       </g>
     </g>
-    <text x="32" y="294" class="mono">
-      <tspan fill="#4ade80">✓</tspan>
-      <tspan fill="#4ade80" font-weight="bold"> Goal completed successfully!</tspan>
-      <tspan fill="#a1a1aa"> All pytest checks passed within budget.</tspan>
-    </text>
-    <text x="32" y="324" class="mono">
-      <tspan class="dim">&gt; 4. </tspan><tspan fill="#4ade80" font-weight="bold">Dark mode ✓</tspan>
-      <tspan class="dim">         |   Steps: </tspan><tspan fill="#4ade80">██████████ 10/10</tspan>
-      <tspan class="dim">  |   Cost: </tspan><tspan fill="#4ade80" font-weight="bold">$0.4950 / $1.5000</tspan>
-    </text>
+    <text x="24" y="294" class="mono"><tspan fill="#4ade80">✓ </tspan><tspan fill="#4ade80" font-weight="bold">Goal completed successfully!</tspan><tspan fill="#a1a1aa"> All pytest checks passed within budget.</tspan></text>
+    <text x="24" y="324" class="mono"><tspan class="dim">&gt; 4. </tspan><tspan fill="#4ade80" font-weight="bold">Phase: Completed ✓</tspan><tspan class="dim"> | Steps: </tspan><tspan fill="#4ade80">██████████ 10/10</tspan><tspan class="dim"> | Budget: </tspan><tspan fill="#4ade80" font-weight="bold">$0.4950 / $1.5000</tspan></text>
   </g>
 </svg>
