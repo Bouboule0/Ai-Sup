@@ -57,7 +57,7 @@ The benchmark simulates a 10-step software engineering pipeline (file inspection
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | `argon-only` | 100% Frontier | `gemini-4-argon` | `gemini-4-argon` | 10/10 (100%) | 20 | 0 | \$0.1290 | \$3.0200 | **\$3.1490** | Baseline (0.0%) | 152.5s |
 | `argon-flash` | Delegated P-t-E | `gemini-4-argon` | `gemini-3.8-flash` | 10/10 (100%) | 24 | 1 | \$0.2580 | \$1.2420 | **\$1.5000** | **-52.4%** | 62.6s |
-| `argon-pro` | Delegated P-t-E | `gemini-4-argon` | `gemini-3.1-pro` | 10/10 (100%) | 20 | 0 | \$0.1290 | \$1.6000 | **\$1.7290** | **-45.1%** | 90.5s |
+| `argon-pro` | Delegated P-t-E | `gemini-4-argon` | `gemini-3.1-pro` | 10/10 (100%) | 20 | 0 | \$0.1290 | \$3.1200 | **\$3.2490** | **+3.2%** | 90.5s |
 | `opus-only` | 100% Frontier | `claude-opus-5.5` | `claude-opus-5.5` | 10/10 (100%) | 20 | 0 | \$0.2760 | \$6.4000 | **\$6.6760** | Baseline (0.0%) | 177.8s |
 | `opus-sonnet` | Delegated P-t-E | `claude-opus-5.5` | `claude-sonnet-5.5` | 10/10 (100%) | 20 | 0 | \$0.2760 | \$2.1600 | **\$2.4360** | **-63.5%** | 77.8s |
 | `opus-haiku` | Delegated P-t-E | `claude-opus-5.5` | `claude-haiku-5.5` | 10/10 (100%) | 36 | 1 | \$0.5520 | \$0.2394 | **\$0.7914** | **-88.1%** | 73.6s |
@@ -66,7 +66,7 @@ The benchmark simulates a 10-step software engineering pipeline (file inspection
 
 ### 💡 Key Takeaways from the Simulation
 1. **`argon-flash` (`Gemini 4 Argon` → `Gemini 3.8 Flash`)**: Cuts cost by **52.4%** (\$1.50 vs \$3.15) and reduces latency by **2.4×** (62.6s vs 152.5s), even when accounting for 1 automatic escalation.
-2. **`argon-pro` (`Gemini 4 Argon` → `Gemini 3.1 Pro`)**: Zero escalations needed on complex algorithmic steps while still saving **45.1%** (\$1.73 vs \$3.15).
+2. **`argon-pro` (`Gemini 4 Argon` → `Gemini 3.1 Pro`)**: Zero escalations needed on complex algorithmic steps, with a **3.2% higher cost** (\$3.25 vs \$3.15).
 3. **`opus-sonnet` (`Claude Opus 5.5` → `Claude Sonnet 5.5`)**: Cuts Anthropic execution cost by **63.5%** (\$2.44 vs \$6.68) with zero escalations and **2.3×** faster completion.
 4. **`opus-flash` (`Claude Opus 5.5` → `Gemini 3.8 Flash`)**: Cross-provider hybrid pairing combining Opus 5.5 architectural planning with Flash execution speed, saving **73.1%** compared to running the full pipeline on Opus alone.
 

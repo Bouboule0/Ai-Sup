@@ -36,7 +36,8 @@ def test_comparative_benchmark_all_pairings() -> None:
     assert by_id["argon-flash"].total_cost_usd < by_id["argon-only"].total_cost_usd
     assert by_id["argon-flash"].savings_vs_baseline_pct > 45.0
 
-    assert by_id["argon-pro"].total_cost_usd < by_id["argon-only"].total_cost_usd
+    # 20 turns of 36k input at $2/M plus 7k output at $12/M.
+    assert by_id["argon-pro"].executor_cost_usd == 3.12
     assert by_id["opus-sonnet"].total_cost_usd < by_id["opus-only"].total_cost_usd
     assert by_id["opus-sonnet"].savings_vs_baseline_pct > 55.0
 

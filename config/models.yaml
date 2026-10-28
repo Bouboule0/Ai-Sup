@@ -41,8 +41,13 @@ models:
   gemini-3.1-pro:
     id: "gemini-3.1-pro-preview"
     provider: "google"
-    input_cost_per_million: 1.25
-    output_cost_per_million: 5.00
+    # Standard rates; both rates increase for prompts above 200,000 tokens.
+    input_cost_per_million: 2.00
+    output_cost_per_million: 12.00
+    prompt_pricing_tiers:
+      - input_tokens_above: 200000
+        input_cost_per_million: 4.00
+        output_cost_per_million: 18.00
     capabilities:
       structured_output: true
       function_calling: true

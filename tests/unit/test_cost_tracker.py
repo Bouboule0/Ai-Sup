@@ -79,6 +79,43 @@ def test_configured_prices_at_argon_transition(
     assert tracker.get_model_id("gemini-3.1-pro") == "gemini-3.1-pro-preview"
 
 
+@pytest.mark.parametrize("config_path", ["config/models.yaml", "src/orchestrator/config/models.yaml"])
+@pytest.mark.parametrize("model", ["gemini-3.1-pro", "gemini-3.1-pro-preview"])
+@pytest.mark.parametrize("input_tokens, output_tokens, expected_cost, over_budget", [
+    (0, 200_001, 2.400012, True),
+    (199_999, 1_000, 0.411998, False),
+    (200_000, 1_000, 0.412, False),
+    (200_001, 1_000, 0.818004, True),
+])
+def test_gemini_pro_prompt_pricing_and_budget(
+    config_path: str, model: str, input_tokens: int, output_tokens: int,
+    expected_cost: float, over_budget: bool,
+) -> None:
+    root = Path(__file__).resolve().parents[2]
+    tracker = CostTracker(0.60, root / config_path)
+    pricing = tracker.get_model_pricing(model)
+    assert (pricing.input_cost_per_million, pricing.output_cost_per_million) == (2.0, 12.0)
+    assert not tracker.is_over_budget()
+
+    assert tracker.record_call(model, input_tokens, output_tokens, role="executor") == pytest.approx(
+        expected_cost
+    )
+    assert tracker.total_cost() == pytest.approx(expected_cost)
+    assert tracker.executor_cost() == pytest.approx(expected_cost)
+    assert tracker.remaining_budget() == pytest.approx(0.60 - expected_cost)
+    assert tracker.is_over_budget() is over_budget
+
+
+def test_prompt_pricing_uses_each_calls_input_tokens() -> None:
+    root = Path(__file__).resolve().parents[2]
+    tracker = CostTracker(2.0, root / "config/models.yaml")
+    assert tracker.record_call("gemini-3.1-pro", 200_001, 1_000) == pytest.approx(0.818004)
+    for _ in range(2):
+        assert tracker.record_call("gemini-3.1-pro", 150_000, 1_000) == pytest.approx(0.312)
+    assert tracker.total_cost() == pytest.approx(1.442004)
+    assert not tracker.is_over_budget()
+
+
 def test_packaged_model_config_matches_source() -> None:
     import yaml
 

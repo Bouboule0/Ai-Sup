@@ -206,9 +206,23 @@ def test_finding_4_shell_blocks_inline_code_and_path_traversal(tmp_path: Path) -
     assert is_command_allowed("python test_app.py", allowed, project_root=tmp_path) is True
 
 
-@pytest.mark.parametrize("command", ['python -Bc "print(1)"', 'python -Be "print(1)"'])
+@pytest.mark.parametrize("command", [
+    'python -Bc "print(1)"', 'python -Be "print(1)"',
+    'python -Bc="print(1)"', 'python -Be="print(1)"',
+])
 def test_shell_rejects_clustered_inline_execution(command: str, tmp_path: Path) -> None:
     assert not is_command_allowed(command, ["python"], project_root=tmp_path)
+
+
+@pytest.mark.parametrize("command, expected", [
+    ("pytest -k=case", True),
+    ("pytest -k=case=example", True),
+    ("pytest -k=../outside", False),
+])
+def test_shell_checks_short_option_values_as_paths(
+    command: str, expected: bool, tmp_path: Path,
+) -> None:
+    assert is_command_allowed(command, ["pytest"], project_root=tmp_path) is expected
 
 
 @pytest.mark.parametrize("executor_class", [FlashExecutor, AnthropicExecutor])

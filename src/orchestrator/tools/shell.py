@@ -47,7 +47,8 @@ def _is_argument_safe(token: str, project_root: Path | None) -> bool:
         if token.startswith(f"{flag}="):
             return False
     if token.startswith("-") and not token.startswith("--"):
-        if any(flag in token[1:] for flag in ("c", "e")):
+        option_name = token.split("=", 1)[0]
+        if any(flag in option_name[1:] for flag in ("c", "e")):
             return False
 
     candidate = _extract_candidate_path(token)

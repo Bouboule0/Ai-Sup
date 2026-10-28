@@ -8,6 +8,15 @@ import yaml
 
 
 @dataclass(frozen=True)
+class PromptPricingTier:
+    """Tarifs applicables à tout l'appel au-delà d'un seuil de tokens en entrée."""
+
+    input_tokens_above: int
+    input_cost_per_million: float
+    output_cost_per_million: float
+
+
+@dataclass(frozen=True)
 class ModelPricing:
     """Tarification et métadonnées fournisseur d'un modèle par million de tokens."""
 
@@ -16,6 +25,7 @@ class ModelPricing:
     provider: str
     input_cost_per_million: float
     output_cost_per_million: float
+    prompt_pricing_tiers: tuple[PromptPricingTier, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -73,6 +83,17 @@ class CostTracker:
                 provider=str(info.get("provider", "google")),
                 input_cost_per_million=float(effective_pricing["input_cost_per_million"]),
                 output_cost_per_million=float(effective_pricing["output_cost_per_million"]),
+                prompt_pricing_tiers=tuple(
+                    PromptPricingTier(
+                        input_tokens_above=int(tier["input_tokens_above"]),
+                        input_cost_per_million=float(tier["input_cost_per_million"]),
+                        output_cost_per_million=float(tier["output_cost_per_million"]),
+                    )
+                    for tier in sorted(
+                        effective_pricing.get("prompt_pricing_tiers", []),
+                        key=lambda t: int(t["input_tokens_above"]),
+                    )
+                ),
             )
             self._pricing_by_key[role_key] = pricing
             self._pricing_by_id[pricing.model_id] = pricing
@@ -136,9 +157,15 @@ class CostTracker:
             raise ValueError("Le nombre de tokens ne peut pas être négatif.")
 
         pricing = self.get_model_pricing(model)
+        input_rate = pricing.input_cost_per_million
+        output_rate = pricing.output_cost_per_million
+        for tier in pricing.prompt_pricing_tiers:
+            if input_tokens > tier.input_tokens_above:
+                input_rate = tier.input_cost_per_million
+                output_rate = tier.output_cost_per_million
         call_cost = (
-            (input_tokens / 1_000_000.0) * pricing.input_cost_per_million
-            + (output_tokens / 1_000_000.0) * pricing.output_cost_per_million
+            (input_tokens / 1_000_000.0) * input_rate
+            + (output_tokens / 1_000_000.0) * output_rate
         )
         self._total_input_tokens += input_tokens
         self._total_output_tokens += output_tokens
