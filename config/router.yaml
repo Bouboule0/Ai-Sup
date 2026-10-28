@@ -1,0 +1,12 @@
+router:
+  max_retries_before_escalation: 2
+  min_remaining_budget_for_planner: 0.25
+
+shell:
+  allowed_commands:
+    - "pytest"
+    - "python"
+    - "git status"
+    - "git diff"
+    - "ruff"
+    - "ls"
