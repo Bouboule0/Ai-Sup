@@ -10,3 +10,12 @@ shell:
     - "git diff"
     - "ruff"
     - "ls"
+
+# Optional Jev decision layer (wired into StepRouter in a later change).
+decision:
+  enabled: false
+  model: "jev"
+  escalate_min_probability: 0.7
+  retry_max_probability: 0.3
+  timeout_s: 10.0
+  max_input_chars: 8000

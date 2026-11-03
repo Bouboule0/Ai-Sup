@@ -123,3 +123,20 @@ def test_packaged_model_config_matches_source() -> None:
     assert yaml.safe_load((root / "config/models.yaml").read_text()) == yaml.safe_load(
         (root / "src/orchestrator/config/models.yaml").read_text()
     )
+
+
+def test_jev_decision_pricing_and_bucket() -> None:
+    """Vérifie la tarification entrée seule et la ventilation du coût Jev."""
+    root = Path(__file__).resolve().parents[2]
+    tracker = CostTracker(max_budget=1.0, models_config_path=root / "config/models.yaml")
+
+    pricing = tracker.get_model_pricing("jev")
+    assert (pricing.input_cost_per_million, pricing.output_cost_per_million) == (0.042, 0.0)
+    assert tracker.get_provider("jev") == "ofoxai"
+
+    assert tracker.record_call("jev", 1_000_000, 0, role="decision") == pytest.approx(0.042)
+    assert tracker.record_call("jev", 0, 1_000_000, role="decision") == pytest.approx(0.0)
+    assert tracker.decision_cost() == pytest.approx(0.042)
+    assert tracker.planner_cost() == 0.0
+    assert tracker.executor_cost() == 0.0
+    assert tracker.total_cost() == pytest.approx(0.042)

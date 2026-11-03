@@ -89,6 +89,16 @@ models:
       structured_output: true
       function_calling: true
 
+  # Decision model (Jev / TypeSafe). Not usable as a planner or executor.
+  jev:
+    id: "typesafe/jev-latest"
+    provider: "ofoxai"
+    # Billed on input tokens only; output tokens are free.
+    input_cost_per_million: 0.042
+    output_cost_per_million: 0.0
+    capabilities:
+      decisions: true
+
 pairings:
   argon-only:
     description: "100% Frontier Baseline (Gemini 4 Argon -> Gemini 4 Argon)"
