@@ -142,7 +142,7 @@ class JevDecisionModel(BaseDecisionModel):
             )
 
         answers: list[DecisionAnswer] = []
-        for raw_answer, question in zip(raw_answers, question_list):
+        for raw_answer, question in zip(raw_answers, question_list, strict=True):
             if not isinstance(raw_answer, dict):
                 raise JevDecisionError("Une réponse Jev n'est pas un objet JSON.")
             if raw_answer.get("name") != question.name:
@@ -150,11 +150,24 @@ class JevDecisionModel(BaseDecisionModel):
                     f"La réponse Jev ne correspond pas à la question '{question.name}'."
                 )
             try:
-                answers.append(DecisionAnswer.model_validate(raw_answer))
+                answer = DecisionAnswer.model_validate(raw_answer)
             except ValidationError as exc:
                 raise JevDecisionError(
                     f"Réponse Jev invalide pour la question '{question.name}'."
                 ) from exc
+            if answer.type != question.type:
+                raise JevDecisionError(
+                    f"Le type de la réponse Jev ne correspond pas à la question '{question.name}'."
+                )
+            if (
+                question.choices is not None
+                and answer.choice is not None
+                and answer.choice not in {option.value for option in question.choices}
+            ):
+                raise JevDecisionError(
+                    f"La réponse Jev pour '{question.name}' n'est pas une option valide."
+                )
+            answers.append(answer)
         return answers
 
     async def _post_with_retries(

@@ -291,6 +291,69 @@ def test_long_text_input_is_truncated(tracker: CostTracker) -> None:
     assert truncated.endswith("[tronqué]")
 
 
+def test_answer_type_must_match_question(tracker: CostTracker) -> None:
+    """Vérifie qu'une réponse d'un autre type que la question est rejetée."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "model": "typesafe/jev-latest",
+                "answers": [
+                    {"type": "predicate", "name": "action", "probability": 0.9}
+                ],
+                "usage": {"prompt_tokens": 10},
+            },
+        )
+
+    question = DecisionQuestion(
+        type=DecisionQuestionType.CHOICE,
+        name="action",
+        instructions="Quelle action ?",
+        choices=[
+            DecisionOption(value="retry", description="Réessayer"),
+            DecisionOption(value="replan", description="Replanifier"),
+        ],
+    )
+    model = _mock_model(tracker, handler)
+    with pytest.raises(JevDecisionError, match="type de la réponse"):
+        asyncio.run(model.decide("contenu", [question]))
+
+
+def test_choice_answer_must_be_an_allowed_option(tracker: CostTracker) -> None:
+    """Vérifie qu'une valeur hors des options de la question est rejetée."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "model": "typesafe/jev-latest",
+                "answers": [
+                    {
+                        "type": "choice",
+                        "name": "action",
+                        "choice": "autre",
+                        "confidence": 0.9,
+                    }
+                ],
+                "usage": {"prompt_tokens": 10},
+            },
+        )
+
+    question = DecisionQuestion(
+        type=DecisionQuestionType.CHOICE,
+        name="action",
+        instructions="Quelle action ?",
+        choices=[
+            DecisionOption(value="retry", description="Réessayer"),
+            DecisionOption(value="replan", description="Replanifier"),
+        ],
+    )
+    model = _mock_model(tracker, handler)
+    with pytest.raises(JevDecisionError, match="option valide"):
+        asyncio.run(model.decide("contenu", [question]))
+
+
 def test_choice_question_requires_valid_options() -> None:
     """Vérifie la validation Pydantic des options d'une question choice."""
     with pytest.raises(ValidationError):
