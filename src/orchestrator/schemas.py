@@ -142,6 +142,136 @@ class ExecutionResult(BaseModel):
     )
 
 
+class DecisionQuestionType(str, Enum):
+    """Types de questions supportées par un modèle de décision."""
+
+    PREDICATE = "predicate"
+    CHOICE = "choice"
+    SCORE = "score"
+
+
+class DecisionOption(BaseModel):
+    """Option d'une question de type `choice`."""
+
+    value: str = Field(..., description="Valeur renvoyée par le modèle pour cette option.")
+    description: str | None = Field(default=None, description="Description de l'option.")
+
+
+class DecisionLevel(BaseModel):
+    """Niveau d'une question de type `score`."""
+
+    label: str = Field(..., description="Libellé du niveau.")
+    description: str | None = Field(default=None, description="Description du niveau.")
+
+
+class DecisionQuestion(BaseModel):
+    """Question fermée envoyée à un modèle de décision (Jev)."""
+
+    type: DecisionQuestionType = Field(..., description="Type de réponse attendue.")
+    name: str = Field(..., min_length=1, description="Identifiant unique de la question.")
+    instructions: str = Field(..., min_length=1, description="Question posée au modèle.")
+    criteria: dict[str, str] | None = Field(
+        default=None,
+        description="Pour `predicate`, sens des réponses 'true' et 'false'.",
+    )
+    choices: list[DecisionOption] | None = Field(
+        default=None,
+        description="Pour `choice`, options possibles (2 à 255).",
+    )
+    levels: list[DecisionLevel] | None = Field(
+        default=None,
+        description="Pour `score`, niveaux ordonnés (2 à 10).",
+    )
+
+    @model_validator(mode="after")
+    def _validate_shape(self) -> DecisionQuestion:
+        """Vérifie que les options ou niveaux requis sont présents et cohérents."""
+        if self.type == DecisionQuestionType.CHOICE:
+            if self.choices is None or not 2 <= len(self.choices) <= 255:
+                raise ValueError("Une question 'choice' requiert entre 2 et 255 options.")
+            values = [option.value for option in self.choices]
+            if len(values) != len(set(values)):
+                raise ValueError("Les valeurs des options 'choice' doivent être uniques.")
+        if self.type == DecisionQuestionType.SCORE:
+            if self.levels is None or not 2 <= len(self.levels) <= 10:
+                raise ValueError("Une question 'score' requiert entre 2 et 10 niveaux.")
+            labels = [level.label for level in self.levels]
+            if len(labels) != len(set(labels)):
+                raise ValueError("Les libellés des niveaux 'score' doivent être uniques.")
+        return self
+
+
+class DecisionProbability(BaseModel):
+    """Probabilité associée à une option ou à un niveau."""
+
+    value: str | int = Field(..., description="Valeur de l'option ou index du niveau.")
+    label: str | None = Field(default=None, description="Libellé du niveau, si applicable.")
+    probability: float = Field(..., ge=0.0, le=1.0, description="Probabilité de cette valeur.")
+
+
+class DecisionAnswer(BaseModel):
+    """Réponse structurée d'un modèle de décision à une question."""
+
+    type: DecisionQuestionType = Field(..., description="Type de la question répondue.")
+    name: str = Field(..., description="Nom de la question répondue.")
+    probability: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Probabilité du 'oui' pour une question `predicate`.",
+    )
+    choice: str | None = Field(default=None, description="Option retenue pour `choice`.")
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Confiance du modèle pour `choice` et `score`.",
+    )
+    score: float | None = Field(default=None, ge=0.0, description="Note pour `score`.")
+    legend: dict[str, str] | None = Field(
+        default=None,
+        description="Correspondance index de niveau -> description.",
+    )
+    probabilities: list[DecisionProbability] | None = Field(
+        default=None,
+        description="Probabilité de chaque option ou niveau.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_expected_field(self) -> DecisionAnswer:
+        """Vérifie que le champ de réponse attendu pour le type est présent."""
+        if self.type == DecisionQuestionType.PREDICATE and self.probability is None:
+            raise ValueError("Une réponse 'predicate' doit contenir 'probability'.")
+        if self.type == DecisionQuestionType.CHOICE and self.choice is None:
+            raise ValueError("Une réponse 'choice' doit contenir 'choice'.")
+        if self.type == DecisionQuestionType.SCORE and self.score is None:
+            raise ValueError("Une réponse 'score' doit contenir 'score'.")
+        return self
+
+
+DecisionInput = str | dict[str, Any] | list[dict[str, Any]]
+
+
+class DecisionRequest(BaseModel):
+    """Corps de requête envoyé à l'API Decisions d'OfoxAI."""
+
+    model: str = Field(..., min_length=1, description="Identifiant du modèle de décision.")
+    input: DecisionInput = Field(..., description="Contenu texte ou JSON à évaluer.")
+    questions: list[DecisionQuestion] = Field(
+        ...,
+        min_length=1,
+        description="Questions à poser dans la même requête.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_unique_names(self) -> DecisionRequest:
+        """Vérifie que chaque question possède un nom unique."""
+        names = [question.name for question in self.questions]
+        if len(names) != len(set(names)):
+            raise ValueError("Les noms des questions doivent être uniques.")
+        return self
+
+
 class BenchmarkEntry(BaseModel):
     """Résultat agrégé d'un couple (Planner -> Executor) sur un scénario de benchmark."""
 

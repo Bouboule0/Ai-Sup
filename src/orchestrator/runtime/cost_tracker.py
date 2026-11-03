@@ -61,6 +61,7 @@ class CostTracker:
         self._total_cost = 0.0
         self._planner_cost = 0.0
         self._executor_cost = 0.0
+        self._decision_cost = 0.0
         self._total_input_tokens = 0
         self._total_output_tokens = 0
         self._pricing_by_key: dict[str, ModelPricing] = {}
@@ -148,7 +149,7 @@ class CostTracker:
             model: Clé de rôle ('planner', 'executor') ou identifiant du modèle.
             input_tokens: Nombre de tokens en entrée.
             output_tokens: Nombre de tokens en sortie.
-            role: Rôle explicite optionnel ('planner' ou 'executor') pour la ventilation des coûts.
+            role: Rôle explicite optionnel ('planner', 'executor' ou 'decision') pour la ventilation des coûts.
 
         Returns:
             Coût de l'appel en USD.
@@ -176,6 +177,8 @@ class CostTracker:
             self._planner_cost += call_cost
         elif effective_role == "executor":
             self._executor_cost += call_cost
+        elif effective_role == "decision":
+            self._decision_cost += call_cost
 
         return call_cost
 
@@ -190,6 +193,10 @@ class CostTracker:
     def executor_cost(self) -> float:
         """Retourne le coût cumulé attribué à l'Executor en USD."""
         return round(self._executor_cost, 8)
+
+    def decision_cost(self) -> float:
+        """Retourne le coût cumulé attribué au modèle de décision en USD."""
+        return round(self._decision_cost, 8)
 
     def remaining_budget(self) -> float:
         """Retourne le budget restant en USD (peut être négatif en cas de dépassement)."""
